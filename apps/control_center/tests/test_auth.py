@@ -1,0 +1,37 @@
+from backend import auth
+
+
+def test_bootstrap_admin_password_hash_and_session(tmp_path, monkeypatch):
+    monkeypatch.setattr(auth, "DB_PATH", tmp_path / "auth.sqlite3")
+    monkeypatch.setenv("ADMIN_USERNAME", "root_admin")
+    monkeypatch.setenv("ADMIN_PASSWORD", "A-very-long-admin-password-2026")
+    auth.init_auth()
+
+    admin = auth.authenticate("root_admin", "A-very-long-admin-password-2026")
+    assert admin is not None
+    assert admin["role"] == "admin"
+    assert auth.authenticate("root_admin", "wrong-password") is None
+
+    token, csrf, expires = auth.create_session(admin["id"])
+    session = auth.get_session(token)
+    assert session is not None
+    assert session[0]["username"] == "root_admin"
+    assert session[1] == csrf
+    assert expires > 0
+
+    auth.revoke_session(token)
+    assert auth.get_session(token) is None
+
+
+def test_user_deactivation_revokes_sessions(tmp_path, monkeypatch):
+    monkeypatch.setattr(auth, "DB_PATH", tmp_path / "auth.sqlite3")
+    monkeypatch.delenv("ADMIN_USERNAME", raising=False)
+    monkeypatch.delenv("ADMIN_PASSWORD", raising=False)
+    auth.init_auth()
+
+    user = auth.add_user("viewer_test", "a-very-long-user-password", "viewer")
+    token, _, _ = auth.create_session(user["id"])
+    assert auth.get_session(token) is not None
+
+    assert auth.set_user_active(user["id"], False)
+    assert auth.get_session(token) is None
