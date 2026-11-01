@@ -165,122 +165,102 @@ HTML = r"""
 <html lang="fa" dir="rtl">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="theme-color" content="#0b1220">
-<title>Forex AI Hybrid Scalper</title>
+<meta name="theme-color" content="#0b1020">
+<title>Forex AI | مرکز هوشمند معاملات</title>
 <style>
-:root{color-scheme:dark;--bg:#0b1220;--panel:#121d30;--line:#26354d;--muted:#9aa9bd;--text:#e8eef8;--green:#7fe0b3;--amber:#ffd18a;--red:#ff7777}
-*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 85% 0,#182944 0,transparent 32%),var(--bg);color:var(--text);font:15px system-ui,-apple-system,sans-serif}
-main{max-width:1180px;margin:auto;padding:26px 18px 50px}.top{display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap}
-h1{font-size:clamp(22px,4vw,30px);margin:0}.sub,.muted,small{color:var(--muted)}.sub{margin-top:6px}
-.pill{border:1px solid #28624d;background:#12372d;color:var(--green);border-radius:30px;padding:8px 13px;font-weight:700}
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px;margin-top:20px}
-.card{background:linear-gradient(150deg,#15233a,#111b2c);border:1px solid var(--line);border-radius:16px;padding:18px;box-shadow:0 12px 30px #0002}
-.label{color:var(--muted);font-size:13px}.value{font-size:27px;font-weight:800;margin:8px 0 2px;direction:ltr;text-align:right}
-.green{color:var(--green)}.amber{color:var(--amber)}.red{color:var(--red)}
-section{margin-top:16px}h2{font-size:18px;margin:0 0 14px}
-.symbols,.modules{display:flex;gap:9px;flex-wrap:wrap}.tag,.module{background:#1a2a42;border:1px solid #2b405d;border-radius:10px;padding:10px 12px}
-.module{flex:1 1 130px}.module b{display:block;margin-bottom:3px}
-.actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-button,select{border:1px solid #40516b;border-radius:10px;padding:11px 14px;background:#1a2a42;color:var(--text);font:inherit}
-button{cursor:pointer;font-weight:700}button.danger{background:#762d35;border-color:#a84c54}button:disabled{opacity:.55;cursor:wait}
-.status{padding:12px;border-radius:12px;background:#1b2b42;color:var(--amber);margin-top:10px}
-#toast{min-height:22px;color:var(--green);margin-top:10px}
-footer{margin-top:18px;color:var(--muted);font-size:12px;line-height:1.8}
-@media(max-width:560px){main{padding:18px 12px 36px}.card{padding:15px}.value{font-size:24px}}
+:root{color-scheme:dark;--bg:#090e1b;--panel:#111a2b;--panel2:#151f33;--line:#243149;--text:#edf2fb;--muted:#91a0b8;--green:#37d6a0;--red:#ff6d7a;--gold:#e9bd68;--blue:#7c9cff;--shadow:0 18px 50px #0003}
+:root.light{color-scheme:light;--bg:#f3f6fb;--panel:#fff;--panel2:#f7f9fd;--line:#e3e9f2;--text:#172238;--muted:#687790;--green:#079b70;--red:#dc4658;--gold:#a87820;--blue:#496bd4;--shadow:0 14px 40px #25385812}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:14px/1.7 Vazirmatn,Tahoma,system-ui,sans-serif;transition:background .2s,color .2s}
+button,input,select{font:inherit}button{cursor:pointer}.shell{min-height:100vh;display:grid;grid-template-columns:250px minmax(0,1fr)}
+.sidebar{background:var(--panel);border-left:1px solid var(--line);padding:24px 16px;display:flex;flex-direction:column;gap:24px;position:sticky;top:0;height:100vh}
+.brand{display:flex;align-items:center;gap:11px;padding:0 8px}.logo{width:39px;height:39px;border-radius:13px;background:linear-gradient(135deg,#39d6a2,#4d83e8);display:grid;place-items:center;color:#071522;font-weight:1000;font-size:19px}.brand strong{font-size:16px;letter-spacing:.2px}.brand small{display:block;color:var(--muted);font-size:10px;direction:ltr;text-align:right}
+.nav-title{font-size:10px;color:var(--muted);padding:0 12px;margin-bottom:-14px}.nav{display:grid;gap:5px}.nav button{display:flex;align-items:center;gap:12px;text-align:right;color:var(--muted);background:transparent;border:1px solid transparent;padding:11px 13px;border-radius:11px}.nav button.active,.nav button:hover{background:var(--panel2);border-color:var(--line);color:var(--text)}.nav .ico{width:21px;text-align:center;font-size:16px}
+.side-bottom{margin-top:auto}.safe{padding:13px;border:1px solid #269b7950;background:#159b7010;border-radius:13px;color:var(--green);font-size:12px}.safe b{display:block;font-size:13px;margin-bottom:3px}
+main{min-width:0;padding:25px clamp(14px,3vw,38px) 42px;max-width:1600px;width:100%;margin:auto}
+.topbar{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:23px}.eyebrow{color:var(--muted);font-size:12px}.heading{font-size:24px;font-weight:850;margin:2px 0}.top-actions{display:flex;align-items:center;gap:9px}.icon-btn,.ghost{border:1px solid var(--line);background:var(--panel);color:var(--text);border-radius:11px;padding:9px 12px}.user-chip{display:flex;align-items:center;gap:9px;border:1px solid var(--line);background:var(--panel);padding:6px 11px;border-radius:12px}.avatar{width:30px;height:30px;border-radius:10px;background:#243d5a;color:#a9c7ff;display:grid;place-items:center;font-weight:800}
+.market-strip{display:flex;gap:10px;overflow:auto;margin-bottom:17px;padding-bottom:3px}.ticker{min-width:150px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 13px}.ticker small{color:var(--muted);display:block}.ticker b{direction:ltr;display:block;text-align:right;font-size:14px}.ticker em{font-style:normal;font-size:11px;color:var(--muted)}
+.hero{background:linear-gradient(112deg,#172d3a,#17233c 58%,#28284a);border:1px solid #354866;border-radius:18px;padding:22px 24px;display:flex;justify-content:space-between;align-items:center;gap:18px;overflow:hidden;position:relative}.hero:after{content:"";position:absolute;width:260px;height:260px;border:1px solid #ffffff12;border-radius:50%;left:10%;top:-170px;box-shadow:0 0 0 35px #ffffff08,0 0 0 70px #ffffff05}.hero h2{font-size:19px;margin:0 0 5px}.hero p{margin:0;color:#b9c8dc;font-size:12px}.hero .hero-tag{position:relative;z-index:1;border:1px solid #56d6ad66;background:#2cba8b20;color:#8df0ce;padding:8px 13px;border-radius:30px;white-space:nowrap;font-size:12px}
+.grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:13px;margin-top:16px}.card{background:var(--panel);border:1px solid var(--line);border-radius:15px;padding:17px;box-shadow:var(--shadow);min-width:0}.metric-top{display:flex;align-items:center;justify-content:space-between;color:var(--muted);font-size:12px}.metric-icon{width:32px;height:32px;border-radius:10px;background:var(--panel2);display:grid;place-items:center;font-size:15px}.metric-value{font-size:25px;font-weight:850;direction:ltr;text-align:right;margin:8px 0 1px;line-height:1.4}.metric-foot{font-size:11px;color:var(--muted)}.green{color:var(--green)}.red{color:var(--red)}.gold{color:var(--gold)}
+.content-grid{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(270px,.85fr);gap:14px;margin-top:14px}.section-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:14px}.section-head h3{margin:0;font-size:15px}.section-head small{color:var(--muted)}
+.chart-wrap{height:210px;position:relative;border-radius:10px;background:linear-gradient(180deg,#30bd9510,transparent)}.chart-wrap svg{width:100%;height:100%;overflow:visible}.chart-labels{display:flex;justify-content:space-between;color:var(--muted);font-size:10px;margin-top:4px;direction:ltr}
+.signal{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 0;border-bottom:1px solid var(--line)}.signal:last-child{border:0}.pair{display:flex;align-items:center;gap:9px}.coin{width:34px;height:34px;border-radius:11px;background:var(--panel2);display:grid;place-items:center;font-weight:800;color:var(--gold)}.pair b{display:block;font-size:13px}.pair small{color:var(--muted);font-size:10px}.signal-side{text-align:left;direction:ltr}.signal-side b{display:block}.signal-side small{font-size:10px;color:var(--muted)}
+.pill{font-size:10px;padding:4px 8px;border-radius:20px;background:#e7b74a18;color:var(--gold);border:1px solid #e7b74a35}.pill.ok{background:#25bd8b16;color:var(--green);border-color:#25bd8b35}
+.modules{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:14px}.module{padding:13px;border:1px solid var(--line);background:var(--panel);border-radius:13px}.module b{display:block;font-size:12px}.module small{color:var(--muted);font-size:10px}
+.actions{display:flex;gap:9px;flex-wrap:wrap;align-items:center}.primary{background:linear-gradient(135deg,#21bd8d,#178b77);border:0;color:#041b19;padding:10px 16px;border-radius:10px;font-weight:800}.danger{background:#a83243;color:#fff;border:0;padding:10px 15px;border-radius:10px;font-weight:800}.field{background:var(--panel2);border:1px solid var(--line);border-radius:10px;color:var(--text);padding:10px 12px;min-width:0}
+.notice{background:#e9b74b12;border:1px solid #e9b74b35;color:var(--gold);padding:12px 14px;border-radius:12px;font-size:11px;margin-top:14px}
+.page{display:none}.page.active{display:block}.login-wrap{max-width:420px;margin:8vh auto}.login-card{padding:26px}.login-card h2{margin:0 0 6px}.login-card p{color:var(--muted);font-size:12px;margin:0 0 20px}.login-card input{width:100%;margin:6px 0}.login-card button{width:100%;margin-top:10px}.status{margin-top:10px;color:var(--muted);font-size:12px;min-height:20px}
+.user-row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid var(--line)}.user-row:last-child{border:0}
+footer{color:var(--muted);font-size:10px;margin-top:18px;line-height:1.9}
+@media(max-width:1050px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}.content-grid{grid-template-columns:1fr}}
+@media(max-width:700px){.shell{display:block}.sidebar{position:static;height:auto;padding:13px;border-left:0;border-bottom:1px solid var(--line);gap:12px}.brand{padding:0 5px}.nav-title,.side-bottom{display:none}.nav{display:flex;overflow:auto}.nav button{white-space:nowrap;padding:8px 10px}.nav .ico{display:none}main{padding:17px 12px 30px}.heading{font-size:20px}.hero{padding:17px;align-items:flex-start;flex-direction:column}.hero .hero-tag{white-space:normal}.grid{gap:9px}.card{padding:13px}.metric-value{font-size:21px}.modules{grid-template-columns:repeat(2,minmax(0,1fr))}.topbar{margin-bottom:15px}}
 </style>
 </head>
-<body><main>
-<header class="top"><div><h1>Forex AI Hybrid Scalper</h1><div class="sub">پنل یکپارچه وب و دسکتاپ · نسخه ۵.۲</div></div><span class="pill">حالت امن · فقط آزمایشی</span></header>
-<section class="card" id="login-card"><h2>ورود کاربران</h2><div class="actions"><input id="login-user" autocomplete="username" placeholder="نام کاربری"><input id="login-pass" type="password" autocomplete="current-password" placeholder="رمز عبور"><button onclick="login()">ورود</button></div><div id="login-message" class="status">برای مشاهده پنل وارد حساب کاربری شوید.</div></section>
-<section class="card" id="account-card" hidden><div class="actions"><b id="account-label"></b><span id="role-label" class="pill"></span><button onclick="logout()">خروج امن</button></div></section>
-<section class="card" id="users-card" hidden><h2>مدیریت کاربران (فقط مدیر)</h2><div class="actions"><input id="new-username" placeholder="نام کاربری جدید"><input id="new-password" type="password" autocomplete="new-password" placeholder="رمز عبور حداقل ۱۴ نویسه"><select id="new-role"><option value="trader">معامله‌گر</option><option value="analyst">تحلیل‌گر</option><option value="viewer">فقط مشاهده</option></select><button onclick="createUser()">ساخت کاربر</button></div><div id="users-list" class="status"></div></section>
-<div id="app-content" hidden>
-<div class="grid">
- <article class="card"><div class="label">سرمایه فرضی آزمایش</div><div class="value">$500</div><small>سرمایه واقعی متصل نیست</small></article>
- <article class="card"><div class="label">ریسک هر معامله FX</div><div class="value">0.25%</div><small>طلا: 0.10%</small></article>
- <article class="card"><div class="label">حد توقف زیان روزانه</div><div class="value">1.00%</div><small>قفل ریسک مستقل</small></article>
- <article class="card"><div class="label">اجرای سفارش واقعی</div><div class="value red">غیرفعال</div><small>اتصال بروکر و MT5 برقرار نیست</small></article>
-</div>
-<section class="card"><h2>وضعیت سرویس</h2><div id="status" class="status">در حال دریافت وضعیت…</div><div id="toast"></div></section>
-<section class="card"><h2>نمادهای پیکربندی‌شده</h2><div class="symbols"><span class="tag">EURUSD</span><span class="tag">GBPUSD</span><span class="tag">USDJPY</span><span class="tag">AUDUSD</span><span class="tag">USDCAD</span><span class="tag">USDCHF</span><span class="tag">EURJPY</span><span class="tag">XAUUSD · Gold</span></div></section>
-<section class="card"><h2>ماژول‌های پروژه</h2><div class="modules">
-<div class="module"><b>Scanner</b><small>اسکن بازار - آماده اتصال</small></div><div class="module"><b>News Guard</b><small>فیلتر خبر fail-closed</small></div><div class="module"><b>Adaptive AI</b><small>انتخاب رژیم و استراتژی</small></div><div class="module"><b>Ensemble</b><small>MLP · LSTM · XGBoost</small></div><div class="module"><b>Smart Exit</b><small>برنامه‌ریز SL/TP</small></div><div class="module"><b>Risk Manager</b><small>کنترل ریسک پایه</small></div><div class="module"><b>MT5 Bridge</b><small>هنوز متصل نشده</small></div></div></section>
-<section class="card"><h2>کنترل اضطراری</h2><p class="muted">این دکمه قفل اضطراری پنل را فعال می‌کند. اجرای سفارش در این نسخه از ابتدا غیرفعال است.</p><div class="actions"><button id="stop" class="danger" onclick="activateStop()">فعال‌کردن توقف اضطراری</button><button onclick="refreshStatus()">به‌روزرسانی وضعیت</button></div></section>
-<section class="card"><h2>پیش‌نمایش تصمیم (غیرواقعی)</h2><div class="actions"><select id="symbol"><option>XAUUSD</option><option>EURUSD</option><option>GBPUSD</option><option>USDJPY</option></select><button onclick="preview()">نمایش پیش‌نمایش</button></div><div id="preview" class="status">این بخش سیگنال زنده تولید نمی‌کند.</div></section>
-<footer>این برنامه در وضعیت توسعه است؛ قیمت زنده، تقویم اقتصادی معتبر، اتصال بروکر و ارسال سفارش ندارد. اطلاعات ورود و کلیدهای API را در GitHub قرار ندهید. پیش از استفاده از راه دور، احراز هویت، HTTPS و محدودسازی شبکه لازم است.</footer>
-</div>
-</main>
+<body>
+<section id="login-screen" class="login-wrap">
+ <div class="brand" style="margin-bottom:18px"><div class="logo">F</div><div><strong>FOREX AI</strong><small>HYBRID SCALPER</small></div></div>
+ <div class="card login-card"><h2>به مرکز معاملات خوش آمدید</h2><p>برای ورود به فضای کاری امن، اطلاعات حساب خود را وارد کنید.</p>
+ <input class="field" id="login-user" autocomplete="username" placeholder="نام کاربری">
+ <input class="field" id="login-pass" type="password" autocomplete="current-password" placeholder="رمز عبور">
+ <button class="primary" onclick="login()">ورود به پنل</button><div id="login-message" class="status">حساب کاربری خود را وارد کنید.</div></div>
+</section>
+<div id="app-shell" class="shell" hidden>
+<aside class="sidebar">
+ <div class="brand"><div class="logo">F</div><div><strong>FOREX AI</strong><small>HYBRID SCALPER</small></div></div>
+ <div class="nav-title">فضای کاری</div>
+ <nav class="nav">
+  <button class="active" data-page="overview" onclick="goPage('overview',this)"><span class="ico">▦</span>نمای کلی</button>
+  <button data-page="signals" onclick="goPage('signals',this)"><span class="ico">⌁</span>سیگنال‌ها</button>
+  <button data-page="analysis" onclick="goPage('analysis',this)"><span class="ico">◫</span>تحلیل بازار</button>
+  <button data-page="simulator" onclick="goPage('simulator',this)"><span class="ico">◉</span>شبیه‌ساز</button>
+  <button data-page="modules" onclick="goPage('modules',this)"><span class="ico">◇</span>ماژول‌های AI</button>
+  <button id="users-nav" data-page="users" onclick="goPage('users',this)" hidden><span class="ico">♙</span>مدیریت کاربران</button>
+ </nav>
+ <div class="side-bottom"><div class="safe"><b>● حالت ایمن فعال</b>معاملات واقعی غیرفعال هستند.</div></div>
+</aside>
+<main>
+ <header class="topbar"><div><div class="eyebrow">مرکز کنترل / <span id="crumb">نمای کلی</span></div><div class="heading" id="page-title">داشبورد معاملاتی</div></div>
+ <div class="top-actions"><button class="icon-btn" onclick="toggleTheme()" title="تغییر پوسته">◐</button><div class="user-chip"><div class="avatar" id="avatar">U</div><div><b id="account-label">کاربر</b><div class="eyebrow" id="role-label">عضو</div></div></div><button class="ghost" onclick="logout()">خروج</button></div></header>
+ <div class="market-strip"><div class="ticker"><small>EUR / USD</small><b>—</b><em>داده زنده متصل نیست</em></div><div class="ticker"><small>GBP / USD</small><b>—</b><em>داده زنده متصل نیست</em></div><div class="ticker"><small>USD / JPY</small><b>—</b><em>داده زنده متصل نیست</em></div><div class="ticker"><small>GOLD / XAU</small><b>—</b><em>داده زنده متصل نیست</em></div></div>
+ <section id="page-overview" class="page active">
+  <div class="hero"><div><h2>تصمیم‌گیری هوشمند، با کنترل کامل ریسک</h2><p>تحلیل چندلایه بازار و مدیریت سرمایه در یک فضای کاری یکپارچه</p></div><span class="hero-tag">● محیط آزمایشی · بدون اجرای سفارش</span></div>
+  <div class="grid">
+   <article class="card"><div class="metric-top"><span>سرمایه فرضی</span><span class="metric-icon">◈</span></div><div class="metric-value">$500</div><div class="metric-foot">برای محاسبات آزمایشی</div></article>
+   <article class="card"><div class="metric-top"><span>ریسک هر معامله FX</span><span class="metric-icon">⌁</span></div><div class="metric-value">0.25%</div><div class="metric-foot">طلا: 0.10%</div></article>
+   <article class="card"><div class="metric-top"><span>حد توقف زیان روزانه</span><span class="metric-icon">◇</span></div><div class="metric-value">1.00%</div><div class="metric-foot">محدودیت پیکربندی‌شده</div></article>
+   <article class="card"><div class="metric-top"><span>اجرای معاملات</span><span class="metric-icon">◉</span></div><div class="metric-value red">خاموش</div><div class="metric-foot">اتصال بروکر برقرار نیست</div></article>
+  </div>
+  <div class="content-grid">
+   <article class="card"><div class="section-head"><h3>نمای تحلیلی بازار</h3><span class="pill">نمونه نمایشی</span></div>
+    <div class="chart-wrap"><svg viewBox="0 0 700 210" preserveAspectRatio="none" aria-label="نمودار تزئینی نمونه"><defs><linearGradient id="area" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#37d6a0" stop-opacity=".25"/><stop offset="1" stop-color="#37d6a0" stop-opacity="0"/></linearGradient></defs><g stroke="currentColor" opacity=".09"><path d="M0 35H700M0 85H700M0 135H700M0 185H700"/></g><path d="M0 155 C35 150 45 115 80 125 S125 160 160 130 S205 105 240 118 S285 70 320 92 S360 130 400 98 S450 115 480 72 S530 85 560 55 S610 95 640 45 S675 50 700 25 L700 210 L0 210Z" fill="url(#area)"/><path d="M0 155 C35 150 45 115 80 125 S125 160 160 130 S205 105 240 118 S285 70 320 92 S360 130 400 98 S450 115 480 72 S530 85 560 55 S610 95 640 45 S675 50 700 25" fill="none" stroke="#37d6a0" stroke-width="3" vector-effect="non-scaling-stroke"/></svg></div><div class="chart-labels"><span>09:00</span><span>11:00</span><span>13:00</span><span>15:00</span><span>17:00</span></div><div class="notice">این نمودار صرفاً نمونه رابط کاربری است و از قیمت یا داده بازار دریافت نشده است.</div>
+   </article>
+   <article class="card"><div class="section-head"><h3>وضعیت سیستم</h3><span class="pill ok">محیط امن</span></div><div class="signal"><div class="pair"><div class="coin">AI</div><div><b>موتور تحلیل</b><small>قابل استفاده در حالت آزمایشی</small></div></div><span class="pill ok">آماده</span></div><div class="signal"><div class="pair"><div class="coin">N</div><div><b>فیلتر اخبار</b><small>منبع زنده متصل نیست</small></div></div><span class="pill">محدود</span></div><div class="signal"><div class="pair"><div class="coin">MT</div><div><b>اتصال MT5</b><small>اتصال برقرار نشده</small></div></div><span class="pill">قطع</span></div><div class="signal"><div class="pair"><div class="coin">EX</div><div><b>اجرای سفارش</b><small>در این نسخه خاموش است</small></div></div><span class="pill">غیرفعال</span></div><div id="status" class="status">در حال دریافت وضعیت...</div></article>
+  </div>
+  <div class="card" style="margin-top:14px"><div class="section-head"><h3>کنترل اضطراری</h3><small>دسترسی محدود به مدیر و معامله‌گر</small></div><div class="actions"><button id="stop" class="danger" onclick="activateStop()">فعال‌سازی توقف اضطراری</button><button class="ghost" onclick="refreshStatus()">به‌روزرسانی وضعیت</button></div><div id="toast" class="status"></div></div>
+ </section>
+ <section id="page-signals" class="page"><div class="card"><div class="section-head"><h3>سیگنال‌های معاملاتی</h3><span class="pill">اتصال زنده موجود نیست</span></div><p class="eyebrow">پس از اتصال منبع داده و موتور تولید سیگنال، نقاط ورود، حد ضرر، اهداف سود و نسبت ریسک به بازده در این بخش نمایش داده می‌شوند.</p><div class="signal"><div class="pair"><div class="coin">Au</div><div><b>XAUUSD · طلا</b><small>نمونه نمایشی، نه سیگنال واقعی</small></div></div><span class="pill">بدون سیگنال زنده</span></div><div class="signal"><div class="pair"><div class="coin">€</div><div><b>EURUSD</b><small>منتظر اتصال بازار</small></div></div><span class="pill">بدون سیگنال زنده</span></div></div></section>
+ <section id="page-analysis" class="page"><div class="card"><div class="section-head"><h3>تحلیل چندتایم‌فریمی</h3><span class="pill">در انتظار داده بازار</span></div><div class="modules"><div class="module"><b>ساختار قیمت</b><small>Market Structure</small></div><div class="module"><b>SMC / ICT</b><small>مفاهیم نقدینگی و نواحی</small></div><div class="module"><b>رژیم بازار</b><small>تشخیص روند و نوسان</small></div></div><div class="notice">تا زمان اتصال فید معتبر قیمت، هیچ تحلیل یا جهت بازار به‌عنوان نتیجه زنده ارائه نمی‌شود.</div></div></section>
+ <section id="page-simulator" class="page"><div class="card"><div class="section-head"><h3>شبیه‌ساز تصمیم</h3><span class="pill">آزمایشی</span></div><p class="eyebrow">این ابزار صرفاً منطق محافظتی را در شرایط نمونه نشان می‌دهد.</p><div class="actions"><select class="field" id="symbol"><option>XAUUSD</option><option>EURUSD</option><option>GBPUSD</option><option>USDJPY</option></select><button class="primary" onclick="preview()">اجرای پیش‌نمایش</button></div><div id="preview" class="status">برای شروع، نماد را انتخاب کنید.</div></div></section>
+ <section id="page-modules" class="page"><div class="card"><div class="section-head"><h3>ماژول‌های هوش مصنوعی</h3><span class="pill">نمای معماری</span></div><div class="modules"><div class="module"><b>Market Scanner</b><small>اسکن نمادها و شرایط بازار</small></div><div class="module"><b>News Guard</b><small>فیلتر رویدادهای خبری</small></div><div class="module"><b>Adaptive AI</b><small>انتخاب رژیم و استراتژی</small></div><div class="module"><b>Ensemble AI</b><small>ترکیب مدل‌های تحلیلی</small></div><div class="module"><b>Smart Exit</b><small>مدیریت خروج و اهداف</small></div><div class="module"><b>Risk Manager</b><small>کنترل سرمایه و محدودیت‌ها</small></div></div></div></section>
+ <section id="page-users" class="page"><div class="card"><div class="section-head"><h3>مدیریت کاربران</h3><span class="pill">مدیر سیستم</span></div><div class="actions"><input class="field" id="new-username" placeholder="نام کاربری"><input class="field" id="new-password" type="password" autocomplete="new-password" placeholder="رمز حداقل ۱۴ نویسه"><select class="field" id="new-role"><option value="trader">معامله‌گر</option><option value="analyst">تحلیل‌گر</option><option value="viewer">فقط مشاهده</option></select><button class="primary" onclick="createUser()">ایجاد کاربر</button></div><div id="users-list" class="status"></div></div></section>
+ <footer>Forex AI Hybrid Scalper · ابزار تحلیلی و آموزشی. داده زنده، تقویم اقتصادی معتبر، اتصال بروکر و ارسال سفارش در این نسخه فعال نیست. نمودارها و مقادیر نمونه صرفاً برای نمایش رابط کاربری هستند. معامله‌گری ریسک بالایی دارد.</footer>
+</main></div>
 <script>
-let csrfToken = '';
-async function api(path, options={}) {
- const headers = Object.assign({}, options.headers || {});
- if (options.method && options.method !== 'GET') headers['X-CSRF-Token'] = csrfToken;
- return fetch(path, Object.assign({credentials:'same-origin'}, options, {headers}));
-}
-async function login(){
- const message=document.getElementById('login-message');
- try{
-  const r=await fetch('/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:document.getElementById('login-user').value,password:document.getElementById('login-pass').value})});
-  const d=await r.json(); if(!r.ok) throw new Error(d.detail||'ورود ناموفق بود');
-  csrfToken=d.csrf_token; showAccount(d.user); document.getElementById('login-pass').value=''; message.textContent='ورود موفق بود.';
- }catch(e){message.textContent=e.message;}
-}
-function showAccount(user){
- document.getElementById('login-card').hidden=true;
- document.getElementById('account-card').hidden=false;
- document.getElementById('account-label').textContent='کاربر: '+user.username;
- document.getElementById('role-label').textContent='نقش: '+user.role;
- document.getElementById('app-content').hidden=false;
- document.getElementById('users-card').hidden=user.role!=='admin';
- if(user.role==='admin') loadUsers();
- refreshStatus();
-}
-async function restoreSession(){
- try{
-  const r=await fetch('/api/auth/me',{credentials:'same-origin'}); if(!r.ok)return;
-  const d=await r.json(); csrfToken=d.csrf_token; showAccount(d.user);
- }catch(e){}
-}
-async function logout(){
- try{await api('/api/auth/logout',{method:'POST'});}finally{csrfToken='';location.reload();}
-}
-async function loadUsers(){
- const el=document.getElementById('users-list');
- try{
-  const r=await fetch('/api/users');const d=await r.json();if(!r.ok)throw new Error(d.detail||'خطا');
-  el.replaceChildren();
-  d.users.forEach(u=>{const row=document.createElement('div');row.className='actions';const label=document.createElement('span');label.textContent=u.username+' · '+u.role+' · '+(u.active?'فعال':'غیرفعال');row.appendChild(label);
-   if(u.role!=='admin'){const b=document.createElement('button');b.textContent=u.active?'غیرفعال‌کردن':'فعال‌کردن';b.onclick=()=>setUserActive(u.id,!u.active);row.appendChild(b);}el.appendChild(row);});
- }catch(e){el.textContent=e.message;}
-}
-async function createUser(){
- try{const r=await api('/api/users',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:document.getElementById('new-username').value,password:document.getElementById('new-password').value,role:document.getElementById('new-role').value})});const d=await r.json();if(!r.ok)throw new Error(d.detail||'خطا');document.getElementById('new-password').value='';await loadUsers();}
- catch(e){document.getElementById('users-list').textContent=e.message;}
-}
-async function setUserActive(id,active){
- try{const r=await api('/api/users/'+id+'/active?active='+active,{method:'PATCH'});const d=await r.json();if(!r.ok)throw new Error(d.detail||'خطا');await loadUsers();}
- catch(e){document.getElementById('users-list').textContent=e.message;}
-}
-async function refreshStatus(){
- const el=document.getElementById('status');
- try{
-  const r=await fetch('/api/status'); if(!r.ok) throw new Error('HTTP '+r.status);
-  const d=await r.json();
-  el.innerHTML='توقف اضطراری: <b class="'+(d.emergency_stop?'red':'green')+'">'+(d.emergency_stop?'فعال':'غیرفعال')+'</b> · فیلتر خبر: <b>'+(d.news_filter_enabled?'روشن':'خاموش')+'</b> · اتصال MT5: <b>ندارد</b> · معامله واقعی: <b class="red">غیرفعال</b>';
- }catch(e){el.textContent='ارتباط با بک‌اند برقرار نشد: '+e.message}
-}
-async function activateStop(){
- const b=document.getElementById('stop'),t=document.getElementById('toast');b.disabled=true;
- try{const r=await api('/api/emergency-stop',{method:'POST'});if(!r.ok)throw new Error('HTTP '+r.status);t.textContent='قفل توقف اضطراری فعال شد.';await refreshStatus();}
- catch(e){t.textContent='خطا در فعال‌سازی توقف: '+e.message;}
- finally{b.disabled=false;}
-}
-async function preview(){
- const s=document.getElementById('symbol').value,el=document.getElementById('preview');
- try{const r=await fetch('/api/decision-preview?symbol='+encodeURIComponent(s));const d=await r.json();if(!r.ok)throw new Error(d.detail||'request failed');
- el.textContent=s+' · رژیم: '+d.regime+' · استراتژی: '+d.strategy+' · مجوز اجرا: خیر ('+d.guard_reason+')';
- }catch(e){el.textContent='پیش‌نمایش در دسترس نیست: '+e.message;}
-}
+let csrfToken='',currentUser=null;
+const titles={overview:'داشبورد معاملاتی',signals:'سیگنال‌های معاملاتی',analysis:'تحلیل بازار',simulator:'شبیه‌ساز معاملات',modules:'ماژول‌های هوش مصنوعی',users:'مدیریت کاربران'};
+async function api(path,options={}){const headers=Object.assign({},options.headers||{});if(options.method&&options.method!=='GET')headers['X-CSRF-Token']=csrfToken;return fetch(path,Object.assign({credentials:'same-origin'},options,{headers}));}
+async function login(){const msg=document.getElementById('login-message');try{const r=await fetch('/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:document.getElementById('login-user').value,password:document.getElementById('login-pass').value})});const d=await r.json();if(!r.ok)throw Error(d.detail||'ورود ناموفق بود');csrfToken=d.csrf_token;document.getElementById('login-pass').value='';showApp(d.user);}catch(e){msg.textContent=e.message;}}
+function showApp(user){currentUser=user;document.getElementById('login-screen').hidden=true;document.getElementById('app-shell').hidden=false;document.getElementById('account-label').textContent=user.username;document.getElementById('role-label').textContent='نقش: '+user.role;document.getElementById('avatar').textContent=(user.username||'U').slice(0,1).toUpperCase();document.getElementById('users-nav').hidden=user.role!=='admin';refreshStatus();if(user.role==='admin')loadUsers();}
+async function restoreSession(){try{const r=await fetch('/api/auth/me',{credentials:'same-origin'});if(!r.ok)return;const d=await r.json();csrfToken=d.csrf_token;showApp(d.user);}catch(e){}}
+function goPage(name,button){if(name==='users'&&(!currentUser||currentUser.role!=='admin'))return;document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));document.getElementById('page-'+name).classList.add('active');document.querySelectorAll('.nav button').forEach(b=>b.classList.remove('active'));if(button)button.classList.add('active');document.getElementById('page-title').textContent=titles[name];document.getElementById('crumb').textContent=titles[name];}
+function toggleTheme(){document.documentElement.classList.toggle('light');}
+async function logout(){try{await api('/api/auth/logout',{method:'POST'});}finally{csrfToken='';location.reload();}}
+async function loadUsers(){const el=document.getElementById('users-list');try{const r=await fetch('/api/users');const d=await r.json();if(!r.ok)throw Error(d.detail||'خطا');el.replaceChildren();d.users.forEach(u=>{const row=document.createElement('div');row.className='user-row';const label=document.createElement('span');label.textContent=u.username+' · '+u.role+' · '+(u.active?'فعال':'غیرفعال');row.appendChild(label);if(u.role!=='admin'){const b=document.createElement('button');b.className='ghost';b.textContent=u.active?'غیرفعال‌کردن':'فعال‌کردن';b.onclick=()=>setUserActive(u.id,!u.active);row.appendChild(b);}el.appendChild(row);});}catch(e){el.textContent=e.message;}}
+async function createUser(){try{const r=await api('/api/users',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:document.getElementById('new-username').value,password:document.getElementById('new-password').value,role:document.getElementById('new-role').value})});const d=await r.json();if(!r.ok)throw Error(d.detail||'خطا');document.getElementById('new-password').value='';await loadUsers();}catch(e){document.getElementById('users-list').textContent=e.message;}}
+async function setUserActive(id,active){try{const r=await api('/api/users/'+id+'/active?active='+active,{method:'PATCH'});const d=await r.json();if(!r.ok)throw Error(d.detail||'خطا');await loadUsers();}catch(e){document.getElementById('users-list').textContent=e.message;}}
+async function refreshStatus(){const el=document.getElementById('status');try{const r=await fetch('/api/status');if(!r.ok)throw Error('HTTP '+r.status);const d=await r.json();el.textContent='توقف اضطراری: '+(d.emergency_stop?'فعال':'غیرفعال')+' · فیلتر خبر: '+(d.news_filter_enabled?'روشن':'خاموش')+' · MT5: متصل نیست · اجرای واقعی: غیرفعال';}catch(e){el.textContent='وضعیت سرویس دریافت نشد: '+e.message;}}
+async function activateStop(){const b=document.getElementById('stop'),t=document.getElementById('toast');b.disabled=true;try{const r=await api('/api/emergency-stop',{method:'POST'});if(!r.ok)throw Error('HTTP '+r.status);t.textContent='قفل توقف اضطراری فعال شد.';await refreshStatus();}catch(e){t.textContent='خطا: '+e.message;}finally{b.disabled=false;}}
+async function preview(){const s=document.getElementById('symbol').value,el=document.getElementById('preview');try{const r=await fetch('/api/decision-preview?symbol='+encodeURIComponent(s));const d=await r.json();if(!r.ok)throw Error(d.detail||'خطا');el.textContent=s+' · رژیم: '+d.regime+' · استراتژی: '+d.strategy+' · مجوز اجرا: خیر · '+d.guard_reason+' · پیش‌نمایش غیرزنده';}catch(e){el.textContent='پیش‌نمایش در دسترس نیست: '+e.message;}}
 restoreSession();
-</script></body></html>
+</script>
+</body></html>
 """
