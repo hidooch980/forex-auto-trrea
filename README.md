@@ -11,6 +11,7 @@ apps/control_center/       FastAPI dashboard and desktop wrapper scaffold
 modules/ensemble_ai/       MLP + LSTM + XGBoost training/evaluation scaffold
 modules/smart_exit/        ATR/swing-based SL/TP and position-management planner
 modules/news_ai/           Explainable news sentiment features by currency/pair
+modules/master_brain/      Hybrid specialist-signal orchestration and balanced risk gate
  docs/                     Integration and deployment notes
 .github/workflows/         Basic Python test workflow
 ```
@@ -51,6 +52,10 @@ The component tests are currently separate. See each component README and run th
 ## News analysis component
 
 `modules/news_ai/` provides a transparent baseline for scoring timestamped news headlines/summaries, weighting by recency and impact, and aggregating sentiment by currency and FX pair. It is a feature scaffold only: no live news provider is connected and the lexicon is not a trained financial NLP model. Keep the existing economic-calendar blackout guard independent; stale or missing calendar data must not be bypassed by sentiment scores.
+
+## Hybrid Master Brain
+
+`modules/master_brain/` is the deterministic central committee for technical, institutional-proxy, news, macro, smart-money and strategy signals. It produces auditable BUY/SELL/HOLD research decisions, applies freshness/confidence/disagreement checks, and fails closed on missing market/calendar data, event blackouts, emergency stop, daily loss, drawdown or excessive spread. The balanced profile caps proposed risk at 0.25% per trade; existing instrument-specific limits (including the lower XAUUSD default) must take precedence when integrating it. Reliability multipliers are bounded and remain neutral by default. This is an orchestration baseline, not a human-like autonomous intelligence, calibrated probability model, live data feed, or broker execution engine. See [Master Brain documentation](modules/master_brain/README.md).
 
 ## Smart exit component
 
