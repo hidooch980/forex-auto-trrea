@@ -14,6 +14,7 @@ jobs:
           unzip -oq forex_ai_hybrid_scalper_github_complete.zip -d /tmp/forex-project
           cp -a /tmp/forex-project/forex_ai_hybrid_scalper_github/. .
           rm -f forex_ai_hybrid_scalper_github_complete.zip
+          rm -f .github/workflows/tests.yml
       - name: Commit expanded source
         run: |
           git config user.name "github-actions[bot]"
