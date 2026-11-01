@@ -1,0 +1,28 @@
+{
+  "project": "Forex AI Hybrid Scalper",
+  "classes": [
+    "down",
+    "flat",
+    "up"
+  ],
+  "lookahead_bars": 5,
+  "flat_threshold_atr": 0.15,
+  "weekly_retraining": true,
+  "promotion_gates": {
+    "min_validation_samples": 1000,
+    "min_directional_accuracy": 0.51,
+    "max_log_loss": 1.1,
+    "max_probability_ece": 0.15
+  },
+  "risk": {
+    "fx_risk_fraction": 0.0025,
+    "gold_risk_fraction": 0.001,
+    "daily_loss_limit_fraction": 0.01,
+    "martingale": false,
+    "grid": false
+  },
+  "execution": {
+    "enabled": false,
+    "mode": "read_only_demo"
+  }
+}

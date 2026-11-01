@@ -66,3 +66,13 @@ The MT5 material is a scaffold/read-only boundary. Native Python `MetaTrader5` i
 7. Review logs, failure modes, security, and operational recovery independently.
 
 Never commit passwords, investor passwords, API keys, account numbers, private keys, or `.env` files.
+
+## Run component unit tests locally
+
+Run each component's tests from its own directory so its local `src` / `backend` package is importable:
+
+```bash
+cd modules/smart_exit && PYTHONPATH=. python -m pytest -q
+cd ../../modules/ensemble_ai && PYTHONPATH=. python -m pytest -q
+cd ../../apps/control_center && PYTHONPATH=. python -m pytest -q tests
+```
