@@ -6,7 +6,7 @@ from . import auth
 from .config import AppConfig
 from .engine import choose_regime, choose_strategy, authorize_trade
 
-app = FastAPI(title="Forex AI Hybrid Scalper", version="5.1.0")
+app = FastAPI(title="Forex AI Hybrid Scalper", version="5.2.0")
 cfg = AppConfig()
 auth.init_auth()
 
@@ -100,7 +100,7 @@ def status(request: Request):
     require_role(request, "admin", "trader", "analyst", "viewer")
     return {
         "app": "Forex AI Hybrid Scalper",
-        "version": "5.1.0",
+        "version": "5.2.0",
         "mode": "DEMO / SAFE DEFAULTS",
         "live_trading_enabled": False,
         "emergency_stop": _emergency_stop_active,
@@ -131,9 +131,7 @@ def activate_emergency_stop(request: Request):
 
 
 @app.get("/api/decision-preview")
-def decision_preview(adx: float = 25, atr_ratio: float = 1.0, symbol: str = "XAUUSD", request: Request = None):
-    if request is None:
-        raise HTTPException(status_code=401, detail="Authentication required.")
+def decision_preview(request: Request, adx: float = 25, atr_ratio: float = 1.0, symbol: str = "XAUUSD"):
     require_role(request, "admin", "trader", "analyst")
     if symbol not in cfg.symbols:
         raise HTTPException(status_code=400, detail="Symbol is not in the configured universe.")
