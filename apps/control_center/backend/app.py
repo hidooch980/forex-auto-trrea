@@ -1,10 +1,44 @@
-from fastapi import FastAPI, HTTPException
+import os
+from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.responses import HTMLResponse
+from pydantic import BaseModel, Field
+from . import auth
 from .config import AppConfig
 from .engine import choose_regime, choose_strategy, authorize_trade
 
 app = FastAPI(title="Forex AI Hybrid Scalper", version="5.1.0")
 cfg = AppConfig()
+auth.init_auth()
+
+class LoginPayload(BaseModel):
+    username: str = Field(min_length=3, max_length=64)
+    password: str = Field(min_length=1, max_length=256)
+
+class CreateUserPayload(BaseModel):
+    username: str = Field(min_length=3, max_length=64)
+    password: str = Field(min_length=14, max_length=256)
+    role: str
+
+def current_session(request: Request):
+    session = auth.get_session(request.cookies.get("forex_session"))
+    if not session:
+        raise HTTPException(status_code=401, detail="Authentication required.")
+    return session
+
+def require_role(request: Request, *roles: str):
+    user, csrf = current_session(request)
+    if user["role"] not in roles:
+        raise HTTPException(status_code=403, detail="Insufficient role permissions.")
+    if request.method not in ("GET", "HEAD", "OPTIONS"):
+        supplied = request.headers.get("x-csrf-token", "")
+        if not supplied or not secrets_compare(supplied, csrf):
+            raise HTTPException(status_code=403, detail="Invalid CSRF token.")
+    return user
+
+def secrets_compare(left: str, right: str) -> bool:
+    import hmac
+    return hmac.compare_digest(left, right)
+
 # Process-local latch. It starts active on every restart; execution remains disabled.
 _emergency_stop_active = True
 
@@ -14,8 +48,56 @@ def health():
     return {"ok": True, "service": "control-center"}
 
 
+@app.post("/api/auth/login")
+def login(payload: LoginPayload, response: Response):
+    user = auth.authenticate(payload.username, payload.password)
+    if not user:
+        raise HTTPException(status_code=401, detail="Invalid username or password.")
+    token, csrf, expires = auth.create_session(user["id"])
+    response.set_cookie(
+        "forex_session", token, httponly=True,
+        secure=os.getenv("COOKIE_SECURE", "false").lower() == "true",
+        samesite="strict", max_age=auth.SESSION_TTL_SECONDS,
+        path="/",
+    )
+    return {"ok": True, "user": user, "csrf_token": csrf, "expires_at": expires}
+
+@app.get("/api/auth/me")
+def auth_me(request: Request):
+    user, csrf = current_session(request)
+    return {"user": user, "csrf_token": csrf}
+
+@app.post("/api/auth/logout")
+def logout(request: Request, response: Response):
+    require_role(request, "admin", "trader", "analyst", "viewer")
+    auth.revoke_session(request.cookies.get("forex_session"))
+    response.delete_cookie("forex_session", path="/", httponly=True, samesite="strict")
+    return {"ok": True}
+
+@app.get("/api/users")
+def users(request: Request):
+    require_role(request, "admin")
+    return {"users": auth.list_users(), "roles": sorted(auth.ROLES)}
+
+@app.post("/api/users")
+def create_user(payload: CreateUserPayload, request: Request):
+    require_role(request, "admin")
+    try:
+        user = auth.add_user(payload.username, payload.password, payload.role)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return {"ok": True, "user": user}
+
+@app.patch("/api/users/{user_id}/active")
+def change_user_active(user_id: int, active: bool, request: Request):
+    require_role(request, "admin")
+    if not auth.set_user_active(user_id, active):
+        raise HTTPException(status_code=404, detail="User not found.")
+    return {"ok": True, "user_id": user_id, "active": active}
+
 @app.get("/api/status")
-def status():
+def status(request: Request): 
+    require_role(request, "admin", "trader", "analyst", "viewer")
     return {
         "app": "Forex AI Hybrid Scalper",
         "version": "5.1.0",
@@ -41,14 +123,18 @@ def status():
 
 
 @app.post("/api/emergency-stop")
-def activate_emergency_stop():
+def activate_emergency_stop(request: Request):
+    require_role(request, "admin", "trader")
     global _emergency_stop_active
     _emergency_stop_active = True
     return {"ok": True, "emergency_stop": True, "message": "Emergency stop latched."}
 
 
 @app.get("/api/decision-preview")
-def decision_preview(adx: float = 25, atr_ratio: float = 1.0, symbol: str = "XAUUSD"):
+def decision_preview(adx: float = 25, atr_ratio: float = 1.0, symbol: str = "XAUUSD", request: Request = None):
+    if request is None:
+        raise HTTPException(status_code=401, detail="Authentication required.")
+    require_role(request, "admin", "trader", "analyst")
     if symbol not in cfg.symbols:
         raise HTTPException(status_code=400, detail="Symbol is not in the configured universe.")
     regime = choose_regime(adx, atr_ratio, True)
