@@ -13,18 +13,37 @@ python -m pip install -r requirements.txt
 uvicorn backend.app:app --host 127.0.0.1 --port 8000
 ```
 
-Open `http://127.0.0.1:8000`. The API also exposes:
+Open `http://127.0.0.1:8000`.
 
-- `GET /api/health` — service health
-- `GET /api/status` — safe-mode configuration and integration status
-- `GET /api/decision-preview?symbol=XAUUSD` — illustrative, non-live decision preview
-- `POST /api/emergency-stop` — latches the emergency stop in the running process
+## User security and roles
 
-The emergency-stop latch is process-local and resets to active on restart. It does not send a cancel/close request to MT5 because no broker execution adapter is connected. Live order execution is hard-disabled.
+Accounts are stored in SQLite at `data/auth.sqlite3`; password hashes use scrypt with per-user random salts. Session IDs are random opaque tokens stored server-side as SHA-256 hashes. Cookies are HttpOnly and SameSite=Strict; state-changing authenticated API calls require a per-session CSRF token.
+
+Roles:
+- `admin`: list/create/deactivate users and access all dashboard controls.
+- `trader`: view status and decision previews; activate emergency stop.
+- `analyst`: view status and decision previews; no write controls.
+- `viewer`: view status only.
+
+Only an explicitly provisioned administrator can create accounts. Set these environment variables before the first startup:
+
+```bash
+export ADMIN_USERNAME="your-admin-name"
+export ADMIN_PASSWORD="use-a-unique-password-at-least-14-characters"
+```
+
+No default account or password is created. Keep the admin password in your hosting provider's secret manager; never commit it to GitHub. If an administrator already exists, changing these variables will not overwrite that account.
+
+For HTTPS deployment, set `COOKIE_SECURE=true`. Keep it false only for local HTTP development. Set `AUTH_DB_PATH` to a persistent, writable location and back it up securely. Set `SESSION_TTL_SECONDS` to adjust the session lifetime (default 8 hours). Disable a user from the admin panel to revoke all of that user's sessions.
+
+API:
+- `POST /api/auth/login`, `GET /api/auth/me`, `POST /api/auth/logout`
+- `GET /api/users`, `POST /api/users`, `PATCH /api/users/{id}/active` (admin only)
+- `GET /api/status` (authenticated)
+- `GET /api/decision-preview` (admin, trader, analyst)
+- `POST /api/emergency-stop` (admin, trader; CSRF token required)
 
 ## Desktop app
-
-From this directory:
 
 ```bash
 python3 -m venv .venv
@@ -33,13 +52,12 @@ python -m pip install -r desktop/requirements.txt
 python desktop/app.py
 ```
 
-The desktop launcher starts the local API on `127.0.0.1:8000` and opens it in a native window. Close the desktop window to exit.
+The desktop launcher starts the local API on `127.0.0.1:8000` and opens it in a native window.
 
-## Safety / limitations
+## Safety and deployment limitations
 
-- No live market prices or broker connection.
-- No MT5 order placement or position modification.
-- No production news-calendar provider; the news guard must remain fail-closed until a verified feed is integrated.
-- The dashboard's capital and risk values are configuration assumptions, not connected account data.
-- The emergency-stop button latches the dashboard's internal state only. It is not a broker-side kill switch.
-- Do not expose the development server to the public internet. Add authentication, HTTPS, firewall restrictions and persistent state before remote deployment.
+- No live market prices, broker connection, MT5 order placement or production news-calendar provider.
+- Live order execution remains disabled.
+- The emergency-stop latch is process-local; it is not a broker-side kill switch.
+- Use HTTPS, a reverse proxy, firewall restrictions, persistent encrypted backups and host-level monitoring before remote deployment. Add rate limiting and account recovery controls before exposing login to the public internet.
+- Do not expose the development server directly to the public internet.
