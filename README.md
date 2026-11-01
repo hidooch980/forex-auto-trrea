@@ -10,6 +10,7 @@ Unified development repository for a Forex and XAUUSD research/scanning dashboar
 apps/control_center/       FastAPI dashboard and desktop wrapper scaffold
 modules/ensemble_ai/       MLP + LSTM + XGBoost training/evaluation scaffold
 modules/smart_exit/        ATR/swing-based SL/TP and position-management planner
+modules/news_ai/           Explainable news sentiment features by currency/pair
  docs/                     Integration and deployment notes
 .github/workflows/         Basic Python test workflow
 ```
@@ -47,6 +48,10 @@ The component tests are currently separate. See each component README and run th
 
 `modules/ensemble_ai/` contains MLP, LSTM and XGBoost model-building code, ensemble weighting, metrics, registry and retraining scaffolding. TensorFlow and XGBoost are heavyweight optional dependencies and should be installed only in a suitable training environment. The weekly retraining script is an orchestration scaffold, not a configured production scheduler. Before relying on evaluation results, enforce strict chronological train/validation/holdout separation and symbol/timeframe-aware features.
 
+## News analysis component
+
+`modules/news_ai/` provides a transparent baseline for scoring timestamped news headlines/summaries, weighting by recency and impact, and aggregating sentiment by currency and FX pair. It is a feature scaffold only: no live news provider is connected and the lexicon is not a trained financial NLP model. Keep the existing economic-calendar blackout guard independent; stale or missing calendar data must not be bypassed by sentiment scores.
+
 ## Smart exit component
 
 `modules/smart_exit/` calculates proposed initial SL/TP and returns position-management instructions. It does not send modifications or partial-close orders to a broker. Before integration, add and test broker-specific tick-size, tick-value, volume-step, minimum-volume, stop-distance, freeze-level, bid/ask and partial-close confirmation handling.
@@ -74,5 +79,6 @@ Run each component's tests from its own directory so its local `src` / `backend`
 ```bash
 cd modules/smart_exit && PYTHONPATH=. python -m pytest -q
 cd ../../modules/ensemble_ai && PYTHONPATH=. python -m pytest -q
+cd ../../modules/news_ai && PYTHONPATH=. python -m pytest -q
 cd ../../apps/control_center && PYTHONPATH=. python -m pytest -q tests
 ```
