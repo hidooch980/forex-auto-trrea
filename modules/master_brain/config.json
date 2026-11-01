@@ -3,17 +3,20 @@
   "risk_profile": "balanced",
   "risk": {
     "max_risk_per_trade_pct": 0.25,
-    "max_daily_loss_pct": 1.0,
-    "max_drawdown_pct": 5.0,
-    "min_confidence": 0.60,
+    "max_daily_loss_pct": 1,
+    "max_drawdown_pct": 5,
+    "min_confidence": 0.6,
     "min_edge": 0.18,
     "max_signal_age_seconds": 900,
-    "max_spread_pips": 2.5
+    "max_spread_pips": 2.5,
+    "instrument_risk_caps_pct": {
+      "XAUUSD": 0.1
+    }
   },
   "minimum_active_agents": 2,
   "agent_weights": {
     "technical": 0.22,
-    "institutional": 0.20,
+    "institutional": 0.2,
     "news": 0.12,
     "macro": 0.16,
     "smart_money": 0.18,
