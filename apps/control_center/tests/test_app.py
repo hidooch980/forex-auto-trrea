@@ -1,4 +1,5 @@
 from types import SimpleNamespace
+import secrets
 
 from backend import app as app_module
 from backend import auth
@@ -13,7 +14,7 @@ def make_request(token, csrf="", method="GET"):
 
 
 def make_user(role):
-    user = auth.add_user("test_" + role, "a-long-test-password-2026", role)
+    user = auth.add_user("test_" + role + "_" + secrets.token_hex(4), "a-long-test-password-2026", role)
     token, csrf, _ = auth.create_session(user["id"])
     return make_request(token, csrf), csrf
 
