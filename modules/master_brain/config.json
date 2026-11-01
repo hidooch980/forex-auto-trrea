@@ -1,0 +1,23 @@
+{
+  "architecture": "hybrid",
+  "risk_profile": "balanced",
+  "risk": {
+    "max_risk_per_trade_pct": 0.25,
+    "max_daily_loss_pct": 1.0,
+    "max_drawdown_pct": 5.0,
+    "min_confidence": 0.60,
+    "min_edge": 0.18,
+    "max_signal_age_seconds": 900,
+    "max_spread_pips": 2.5
+  },
+  "minimum_active_agents": 2,
+  "agent_weights": {
+    "technical": 0.22,
+    "institutional": 0.20,
+    "news": 0.12,
+    "macro": 0.16,
+    "smart_money": 0.18,
+    "strategy": 0.12
+  },
+  "live_execution_enabled": false
+}
