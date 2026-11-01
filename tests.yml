@@ -1,0 +1,21 @@
+name: component-tests
+on:
+  push:
+  pull_request:
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install --upgrade pip pytest
+      - name: Smart exit unit tests
+        working-directory: modules/smart_exit
+        run: python -m pytest -q
+      - name: Dashboard guard unit tests
+        working-directory: apps/control_center
+        run: |
+          python -m pip install -r requirements.txt
+          python -m pytest -q tests

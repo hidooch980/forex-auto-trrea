@@ -1,0 +1,15 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+.env
+*.log
+*.db
+models/*.keras
+models/*.pkl
+models/*.joblib
+models/*.json
+!models/README.txt
+!data/README.txt
+.DS_Store
