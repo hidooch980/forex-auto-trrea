@@ -100,6 +100,27 @@ class MasterBrainTests(unittest.TestCase):
                 [AgentSignal("technical", 1.2, 0.9), AgentSignal("news", 0.2, 0.8)],
             )
 
+
+    def test_xauusd_uses_lower_instrument_risk_cap(self):
+        result = evaluate_market(MarketContext("XAUUSD"), bullish_signals())
+        self.assertEqual(result.action, Action.BUY)
+        self.assertEqual(result.risk_pct, 0.10)
+
+    def test_requested_xauusd_risk_cannot_exceed_instrument_cap(self):
+        result = evaluate_market(
+            MarketContext("XAUUSD", requested_risk_pct=0.25), bullish_signals()
+        )
+        self.assertEqual(result.risk_pct, 0.10)
+
+    def test_invalid_market_data_and_drawdown_fail_closed(self):
+        result = evaluate_market(
+            MarketContext("EURUSD", market_data_valid=False, drawdown_pct=5.0),
+            bullish_signals(),
+        )
+        self.assertEqual(result.action, Action.HOLD)
+        self.assertIn("market_data_missing_or_invalid", result.reasons)
+        self.assertIn("drawdown_limit_reached", result.reasons)
+
     def test_reliability_multiplier_is_bounded(self):
         context = MarketContext("EURUSD", reliability={"technical": 99.0})
         result = evaluate_market(context, bullish_signals())
