@@ -1,0 +1,24 @@
+name: Expand project archive
+on:
+  push:
+    paths:
+      - "forex_ai_hybrid_scalper_github_complete.zip"
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  expand:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extract project files
+        run: |
+          unzip -oq forex_ai_hybrid_scalper_github_complete.zip -d /tmp/forex-project
+          cp -a /tmp/forex-project/forex_ai_hybrid_scalper_github/. .
+          rm -f forex_ai_hybrid_scalper_github_complete.zip
+      - name: Commit expanded source
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --quiet || (git commit -m "Expand complete Forex AI Hybrid Scalper source" && git push)
