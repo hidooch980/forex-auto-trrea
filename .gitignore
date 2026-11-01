@@ -13,3 +13,5 @@ models/*.json
 !models/README.txt
 !data/README.txt
 .DS_Store
+
+*.sqlite3
