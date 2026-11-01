@@ -1,8 +1,6 @@
 name: Expand project archive
 on:
   push:
-    paths:
-      - "forex_ai_hybrid_scalper_github_complete.zip"
   workflow_dispatch:
 permissions:
   contents: write
