@@ -38,6 +38,10 @@ class RiskProfile:
     min_edge: float = 0.18
     max_signal_age_seconds: float = 900.0
     max_spread_pips: float = 2.5
+    # Instrument-level hard caps; XAUUSD is intentionally lower than FX.
+    instrument_risk_caps_pct: Mapping[str, float] = field(default_factory=lambda: {
+        "XAUUSD": 0.10,
+    })
 
 
 @dataclass(frozen=True)
@@ -116,6 +120,9 @@ def _validate_config(config: BrainConfig) -> None:
             raise ValueError(f"{label} must be positive and finite")
     _finite_range(p.min_confidence, 0.0, 1.0, "min_confidence")
     _finite_range(p.min_edge, 0.0, 1.0, "min_edge")
+    for symbol, cap in p.instrument_risk_caps_pct.items():
+        if not symbol.strip() or not isfinite(cap) or cap <= 0:
+            raise ValueError("instrument risk caps must have non-empty symbols and positive finite values")
 
 
 def evaluate_market(
@@ -202,14 +209,14 @@ def evaluate_market(
     if not reasons:
         action = Action.BUY if score > 0 else Action.SELL
 
-    requested = (
-        profile.max_risk_per_trade_pct
-        if context.requested_risk_pct is None
-        else context.requested_risk_pct
+    instrument_cap = min(
+        profile.max_risk_per_trade_pct,
+        profile.instrument_risk_caps_pct.get(context.symbol.strip().upper(), profile.max_risk_per_trade_pct),
     )
+    requested = instrument_cap if context.requested_risk_pct is None else context.requested_risk_pct
     if not isfinite(requested) or requested < 0:
         raise ValueError("requested_risk_pct must be finite and non-negative")
-    risk_pct = min(requested, profile.max_risk_per_trade_pct) if action != Action.HOLD else 0.0
+    risk_pct = min(requested, instrument_cap) if action != Action.HOLD else 0.0
 
     return BrainDecision(
         symbol=context.symbol.upper(),
