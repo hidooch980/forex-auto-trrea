@@ -24,6 +24,8 @@ jobs:
       - name: Ensemble guard tests
         working-directory: modules/ensemble_ai
         run: PYTHONPATH=. python -m pytest -q
+      - name: Hybrid master brain tests
+        run: python -m unittest discover -s modules/master_brain/tests -v
       - name: Control center tests
         working-directory: apps/control_center
         run: PYTHONPATH=. python -m pytest -q tests
