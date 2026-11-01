@@ -192,7 +192,11 @@ footer{margin-top:18px;color:var(--muted);font-size:12px;line-height:1.8}
 </style>
 </head>
 <body><main>
-<header class="top"><div><h1>Forex AI Hybrid Scalper</h1><div class="sub">پنل یکپارچه وب و دسکتاپ · نسخه ۵.۱</div></div><span class="pill">حالت امن · فقط آزمایشی</span></header>
+<header class="top"><div><h1>Forex AI Hybrid Scalper</h1><div class="sub">پنل یکپارچه وب و دسکتاپ · نسخه ۵.۲</div></div><span class="pill">حالت امن · فقط آزمایشی</span></header>
+<section class="card" id="login-card"><h2>ورود کاربران</h2><div class="actions"><input id="login-user" autocomplete="username" placeholder="نام کاربری"><input id="login-pass" type="password" autocomplete="current-password" placeholder="رمز عبور"><button onclick="login()">ورود</button></div><div id="login-message" class="status">برای مشاهده پنل وارد حساب کاربری شوید.</div></section>
+<section class="card" id="account-card" hidden><div class="actions"><b id="account-label"></b><span id="role-label" class="pill"></span><button onclick="logout()">خروج امن</button></div></section>
+<section class="card" id="users-card" hidden><h2>مدیریت کاربران (فقط مدیر)</h2><div class="actions"><input id="new-username" placeholder="نام کاربری جدید"><input id="new-password" type="password" autocomplete="new-password" placeholder="رمز عبور حداقل ۱۴ نویسه"><select id="new-role"><option value="trader">معامله‌گر</option><option value="analyst">تحلیل‌گر</option><option value="viewer">فقط مشاهده</option></select><button onclick="createUser()">ساخت کاربر</button></div><div id="users-list" class="status"></div></section>
+<div id="app-content" hidden>
 <div class="grid">
  <article class="card"><div class="label">سرمایه فرضی آزمایش</div><div class="value">$500</div><small>سرمایه واقعی متصل نیست</small></article>
  <article class="card"><div class="label">ریسک هر معامله FX</div><div class="value">0.25%</div><small>طلا: 0.10%</small></article>
@@ -206,8 +210,59 @@ footer{margin-top:18px;color:var(--muted);font-size:12px;line-height:1.8}
 <section class="card"><h2>کنترل اضطراری</h2><p class="muted">این دکمه قفل اضطراری پنل را فعال می‌کند. اجرای سفارش در این نسخه از ابتدا غیرفعال است.</p><div class="actions"><button id="stop" class="danger" onclick="activateStop()">فعال‌کردن توقف اضطراری</button><button onclick="refreshStatus()">به‌روزرسانی وضعیت</button></div></section>
 <section class="card"><h2>پیش‌نمایش تصمیم (غیرواقعی)</h2><div class="actions"><select id="symbol"><option>XAUUSD</option><option>EURUSD</option><option>GBPUSD</option><option>USDJPY</option></select><button onclick="preview()">نمایش پیش‌نمایش</button></div><div id="preview" class="status">این بخش سیگنال زنده تولید نمی‌کند.</div></section>
 <footer>این برنامه در وضعیت توسعه است؛ قیمت زنده، تقویم اقتصادی معتبر، اتصال بروکر و ارسال سفارش ندارد. اطلاعات ورود و کلیدهای API را در GitHub قرار ندهید. پیش از استفاده از راه دور، احراز هویت، HTTPS و محدودسازی شبکه لازم است.</footer>
+</div>
 </main>
 <script>
+let csrfToken = '';
+async function api(path, options={}) {
+ const headers = Object.assign({}, options.headers || {});
+ if (options.method && options.method !== 'GET') headers['X-CSRF-Token'] = csrfToken;
+ return fetch(path, Object.assign({credentials:'same-origin'}, options, {headers}));
+}
+async function login(){
+ const message=document.getElementById('login-message');
+ try{
+  const r=await fetch('/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:document.getElementById('login-user').value,password:document.getElementById('login-pass').value})});
+  const d=await r.json(); if(!r.ok) throw new Error(d.detail||'ورود ناموفق بود');
+  csrfToken=d.csrf_token; showAccount(d.user); document.getElementById('login-pass').value=''; message.textContent='ورود موفق بود.';
+ }catch(e){message.textContent=e.message;}
+}
+function showAccount(user){
+ document.getElementById('login-card').hidden=true;
+ document.getElementById('account-card').hidden=false;
+ document.getElementById('account-label').textContent='کاربر: '+user.username;
+ document.getElementById('role-label').textContent='نقش: '+user.role;
+ document.getElementById('app-content').hidden=false;
+ document.getElementById('users-card').hidden=user.role!=='admin';
+ if(user.role==='admin') loadUsers();
+ refreshStatus();
+}
+async function restoreSession(){
+ try{
+  const r=await fetch('/api/auth/me',{credentials:'same-origin'}); if(!r.ok)return;
+  const d=await r.json(); csrfToken=d.csrf_token; showAccount(d.user);
+ }catch(e){}
+}
+async function logout(){
+ try{await api('/api/auth/logout',{method:'POST'});}finally{csrfToken='';location.reload();}
+}
+async function loadUsers(){
+ const el=document.getElementById('users-list');
+ try{
+  const r=await fetch('/api/users');const d=await r.json();if(!r.ok)throw new Error(d.detail||'خطا');
+  el.replaceChildren();
+  d.users.forEach(u=>{const row=document.createElement('div');row.className='actions';const label=document.createElement('span');label.textContent=u.username+' · '+u.role+' · '+(u.active?'فعال':'غیرفعال');row.appendChild(label);
+   if(u.role!=='admin'){const b=document.createElement('button');b.textContent=u.active?'غیرفعال‌کردن':'فعال‌کردن';b.onclick=()=>setUserActive(u.id,!u.active);row.appendChild(b);}el.appendChild(row);});
+ }catch(e){el.textContent=e.message;}
+}
+async function createUser(){
+ try{const r=await api('/api/users',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:document.getElementById('new-username').value,password:document.getElementById('new-password').value,role:document.getElementById('new-role').value})});const d=await r.json();if(!r.ok)throw new Error(d.detail||'خطا');document.getElementById('new-password').value='';await loadUsers();}
+ catch(e){document.getElementById('users-list').textContent=e.message;}
+}
+async function setUserActive(id,active){
+ try{const r=await api('/api/users/'+id+'/active?active='+active,{method:'PATCH'});const d=await r.json();if(!r.ok)throw new Error(d.detail||'خطا');await loadUsers();}
+ catch(e){document.getElementById('users-list').textContent=e.message;}
+}
 async function refreshStatus(){
  const el=document.getElementById('status');
  try{
@@ -218,7 +273,7 @@ async function refreshStatus(){
 }
 async function activateStop(){
  const b=document.getElementById('stop'),t=document.getElementById('toast');b.disabled=true;
- try{const r=await fetch('/api/emergency-stop',{method:'POST'});if(!r.ok)throw new Error('HTTP '+r.status);t.textContent='قفل توقف اضطراری فعال شد.';await refreshStatus();}
+ try{const r=await api('/api/emergency-stop',{method:'POST'});if(!r.ok)throw new Error('HTTP '+r.status);t.textContent='قفل توقف اضطراری فعال شد.';await refreshStatus();}
  catch(e){t.textContent='خطا در فعال‌سازی توقف: '+e.message;}
  finally{b.disabled=false;}
 }
@@ -228,6 +283,6 @@ async function preview(){
  el.textContent=s+' · رژیم: '+d.regime+' · استراتژی: '+d.strategy+' · مجوز اجرا: خیر ('+d.guard_reason+')';
  }catch(e){el.textContent='پیش‌نمایش در دسترس نیست: '+e.message;}
 }
-refreshStatus();
+restoreSession();
 </script></body></html>
 """
