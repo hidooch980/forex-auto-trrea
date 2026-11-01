@@ -15,7 +15,7 @@ The implementation in `engine.py` accepts normalized inputs and produces an audi
 
 ## Balanced defaults
 
-- Maximum proposed risk: 0.25% per trade (hard cap; upstream instrument-specific risk may be lower).
+- Maximum proposed risk: 0.25% per FX trade; XAUUSD has an enforced 0.10% instrument cap. Lower upstream/broker limits still take precedence.
 - Daily loss stop: 1%.
 - Drawdown stop: 5%.
 - Minimum committee confidence: 0.60.
@@ -26,7 +26,7 @@ The implementation in `engine.py` accepts normalized inputs and produces an audi
 - Missing/invalid calendar, missing/invalid market data, event blackout, and emergency stop all fail closed.
 - Risk multipliers based on past reliability are bounded to 0.5–1.5 and default to 1.0. Do not enable adaptive learning until chronological walk-forward evidence supports it.
 
-These are research guardrails, not personalized financial advice or a promise of safety/profitability. The repository's existing instrument-specific defaults (including lower XAUUSD risk) must remain authoritative when wiring this module into the wider application.
+These are research guardrails, not personalized financial advice or a promise of safety/profitability. Instrument-specific caps are enforced by the brain itself (XAUUSD: 0.10%); broker/account limits may reduce them further.
 
 ## Example
 
