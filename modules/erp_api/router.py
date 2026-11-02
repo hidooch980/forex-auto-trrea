@@ -21,6 +21,7 @@ from modules.data_pipeline import PersistentPipeline, PipelineError
 from modules.agent_contracts import validate_agent_output
 from modules.market_data_quality import validate_bars
 from modules.master_brain.engine import AgentSignal, MarketContext, BrainConfig, evaluate_market
+from modules.performance_memory import PerformanceMemory
 
 class AgentEvidencePayload(BaseModel):
     agent_id: str = Field(min_length=1, max_length=80)
@@ -48,6 +49,21 @@ class BrainPipelinePayload(BaseModel):
     daily_loss_pct: float = Field(default=0, ge=0, le=100)
     drawdown_pct: float = Field(default=0, ge=0, le=100)
     spread_pips: float = Field(default=0, ge=0, le=100000)
+
+
+class AgentForecastPayload(BaseModel):
+    agent_id: str = Field(min_length=1, max_length=80)
+    stance: str = Field(pattern="^(bullish|bearish|neutral)$")
+    confidence: float = Field(ge=0, le=1)
+    as_of: int = Field(ge=0)
+
+
+class ClosedTradeOutcomePayload(BaseModel):
+    trade_id: str = Field(min_length=1, max_length=128)
+    symbol: str = Field(min_length=3, max_length=32)
+    closed_at: int = Field(ge=0)
+    realized_return_pct: float
+    forecasts: list[AgentForecastPayload] = Field(min_length=1, max_length=30)
 
 
 class EquityMarkPayload(BaseModel):
@@ -89,6 +105,7 @@ def build_erp_router(require_role: Callable, ledger: PersistentRiskLedger) -> AP
     router = APIRouter(prefix="/api/erp", tags=["ERP Integration"])
 
     pipeline = PersistentPipeline(default_pipeline_path())
+    performance = PerformanceMemory(default_performance_path())
 
     def execute_brain_pipeline(run_id: str, raw: dict):
         try:
@@ -189,6 +206,27 @@ def build_erp_router(require_role: Callable, ledger: PersistentRiskLedger) -> AP
         except PipelineError as exc:
             raise HTTPException(status_code=409, detail=str(exc)) from exc
         return {"run": execute_brain_pipeline(run_id, raw), "execution_allowed": False}
+
+    @router.post("/performance/closed-trade")
+    def record_closed_trade(payload: ClosedTradeOutcomePayload, request: Request):
+        require_role(request, "admin", "trader", "analyst")
+        try:
+            result = performance.record_closed_trade(
+                payload.trade_id, payload.symbol, payload.closed_at,
+                payload.realized_return_pct, [item.model_dump() for item in payload.forecasts],
+            )
+            return result
+        except (ValueError, TypeError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        except Exception as exc:
+            if "UNIQUE constraint failed" in str(exc):
+                raise HTTPException(status_code=409, detail="Trade outcome already recorded") from exc
+            raise
+
+    @router.get("/performance/walk-forward")
+    def performance_walk_forward(request: Request):
+        require_role(request, "admin", "trader", "analyst", "viewer")
+        return performance.report()
 
     @router.get("/catalog")
     def catalog(request: Request):
@@ -293,3 +331,10 @@ def default_pipeline_path() -> Path:
     if configured:
         return Path(configured)
     return Path(os.getenv("ERP_DATA_DIR", "data")) / "erp_pipeline.sqlite3"
+
+
+def default_performance_path() -> Path:
+    configured = os.getenv("ERP_PERFORMANCE_DB")
+    if configured:
+        return Path(configured)
+    return Path(os.getenv("ERP_DATA_DIR", "data")) / "erp_performance_memory.sqlite3"
