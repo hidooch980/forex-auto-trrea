@@ -20,7 +20,8 @@ input double InpMaxSpreadPoints         = 30.0;
 input int    InpMaxSignalAgeSeconds     = 60;
 input double InpRewardRisk              = 1.50;
 input int    InpDeviationPoints         = 10;
-input bool   InpRequireBrainApproval    = true;\ninput string InpJournalFile             = "ForexAI_TradeJournal.csv";
+input bool   InpRequireBrainApproval    = true;
+input string InpJournalFile             = "ForexAI_TradeJournal.csv";
 
 CTrade trade;
 datetime g_last_signal_timestamp = 0;
@@ -161,6 +162,92 @@ bool StopsAreValid(double entry, double stop, double target)
    if(MathAbs(entry - stop) < min_distance || MathAbs(target - entry) < min_distance)
       return false;
    return true;
+}
+
+
+string DealTypeText(const long value)
+{
+   if(value == DEAL_TYPE_BUY) return "BUY";
+   if(value == DEAL_TYPE_SELL) return "SELL";
+   if(value == DEAL_TYPE_BALANCE) return "BALANCE";
+   if(value == DEAL_TYPE_CREDIT) return "CREDIT";
+   if(value == DEAL_TYPE_CHARGE) return "CHARGE";
+   if(value == DEAL_TYPE_CORRECTION) return "CORRECTION";
+   if(value == DEAL_TYPE_BONUS) return "BONUS";
+   if(value == DEAL_TYPE_COMMISSION) return "COMMISSION";
+   if(value == DEAL_TYPE_INTEREST) return "INTEREST";
+   if(value == DEAL_TYPE_BUY_CANCELED) return "BUY_CANCELED";
+   if(value == DEAL_TYPE_SELL_CANCELED) return "SELL_CANCELED";
+   return "OTHER";
+}
+
+string DealEntryText(const long value)
+{
+   if(value == DEAL_ENTRY_IN) return "ENTRY_IN";
+   if(value == DEAL_ENTRY_OUT) return "ENTRY_OUT";
+   if(value == DEAL_ENTRY_INOUT) return "ENTRY_INOUT";
+   if(value == DEAL_ENTRY_OUT_BY) return "ENTRY_OUT_BY";
+   return "OTHER";
+}
+
+void JournalDeal(const ulong deal_ticket)
+{
+   if(deal_ticket == 0 || !HistoryDealSelect(deal_ticket))
+      return;
+   long magic = HistoryDealGetInteger(deal_ticket, DEAL_MAGIC);
+   if(magic != InpMagicNumber)
+      return;
+
+   datetime deal_time = (datetime)HistoryDealGetInteger(deal_ticket, DEAL_TIME);
+   string symbol = HistoryDealGetString(deal_ticket, DEAL_SYMBOL);
+   long deal_type = HistoryDealGetInteger(deal_ticket, DEAL_TYPE);
+   long deal_entry = HistoryDealGetInteger(deal_ticket, DEAL_ENTRY);
+   ulong position_id = (ulong)HistoryDealGetInteger(deal_ticket, DEAL_POSITION_ID);
+   double volume = HistoryDealGetDouble(deal_ticket, DEAL_VOLUME);
+   double price = HistoryDealGetDouble(deal_ticket, DEAL_PRICE);
+   double profit = HistoryDealGetDouble(deal_ticket, DEAL_PROFIT);
+   double commission = HistoryDealGetDouble(deal_ticket, DEAL_COMMISSION);
+   double swap = HistoryDealGetDouble(deal_ticket, DEAL_SWAP);
+   double fee = HistoryDealGetDouble(deal_ticket, DEAL_FEE);
+   string comment = HistoryDealGetString(deal_ticket, DEAL_COMMENT);
+
+   int digits = (int)SymbolInfoInteger(symbol, SYMBOL_DIGITS);
+   int handle = FileOpen(InpJournalFile,
+                         FILE_READ|FILE_WRITE|FILE_CSV|FILE_ANSI|FILE_SHARE_READ,
+                         ',');
+   if(handle == INVALID_HANDLE)
+   {
+      PrintFormat("Trade journal open failed (%s): %d", InpJournalFile, GetLastError());
+      return;
+   }
+   if(FileSize(handle) == 0)
+      FileWrite(handle, "time_server", "deal_ticket", "position_id", "symbol",
+                "deal_type", "deal_entry", "volume", "price", "profit",
+                "commission", "swap", "fee", "net_result", "balance",
+                "equity", "magic", "comment");
+
+   FileSeek(handle, 0, SEEK_END);
+   FileWrite(handle, TimeToString(deal_time, TIME_DATE|TIME_SECONDS),
+             (string)deal_ticket, (string)position_id, symbol,
+             DealTypeText(deal_type), DealEntryText(deal_entry),
+             DoubleToString(volume, 4), DoubleToString(price, digits),
+             DoubleToString(profit, 2), DoubleToString(commission, 2),
+             DoubleToString(swap, 2), DoubleToString(fee, 2),
+             DoubleToString(profit + commission + swap + fee, 2),
+             DoubleToString(AccountInfoDouble(ACCOUNT_BALANCE), 2),
+             DoubleToString(AccountInfoDouble(ACCOUNT_EQUITY), 2),
+             (string)magic, comment);
+   FileClose(handle);
+   PrintFormat("Trade journal: recorded deal %I64u (%s %s)",
+               deal_ticket, symbol, DealEntryText(deal_entry));
+}
+
+void OnTradeTransaction(const MqlTradeTransaction &trans,
+                        const MqlTradeRequest &request,
+                        const MqlTradeResult &result)
+{
+   if(trans.type == TRADE_TRANSACTION_DEAL_ADD)
+      JournalDeal(trans.deal);
 }
 
 void OnTick()
