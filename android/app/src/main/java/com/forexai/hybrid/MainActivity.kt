@@ -47,19 +47,19 @@ class MainActivity : Activity() {
         val root = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setBackgroundColor(0xFF0B1020.toInt()) }
         val bar = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; setPadding(14, 12, 14, 12); gravity = android.view.Gravity.CENTER_VERTICAL }
         val title = TextView(this).apply { text = "FOREX AI"; textSize = 18f; setTextColor(0xFF54DDB0.toInt()) }
-        val settings = Button(this).apply { text = "تنظیم سرور"; setOnClickListener { showServerDialog() } }
+        val settingsButton = Button(this).apply { text = "تنظیم سرور"; setOnClickListener { showServerDialog() } }
         val update = Button(this).apply { text = "بررسی آپدیت"; setOnClickListener { checkForUpdate() } }
-        bar.addView(title, LinearLayout.LayoutParams(0, -2, 1f)); bar.addView(settings); bar.addView(update)
+        bar.addView(title, LinearLayout.LayoutParams(0, -2, 1f)); bar.addView(settingsButton); bar.addView(update)
         status = TextView(this).apply { text = "آماده"; textSize = 12f; setTextColor(0xFFB9C5D8.toInt()); setPadding(16, 4, 16, 8) }
         web = WebView(this).apply {
-            settings.javaScriptEnabled = true
-            settings.domStorageEnabled = true
-            settings.allowFileAccess = false
-            settings.allowContentAccess = false
-            settings.mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
-            settings.javaScriptCanOpenWindowsAutomatically = false
-            settings.setSupportMultipleWindows(false)
-            if (android.os.Build.VERSION.SDK_INT >= 26) settings.safeBrowsingEnabled = true
+            this.settings.javaScriptEnabled = true
+            this.settings.domStorageEnabled = true
+            this.settings.allowFileAccess = false
+            this.settings.allowContentAccess = false
+            this.settings.mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
+            this.settings.javaScriptCanOpenWindowsAutomatically = false
+            this.settings.setSupportMultipleWindows(false)
+            if (android.os.Build.VERSION.SDK_INT >= 26) this.settings.safeBrowsingEnabled = true
             webViewClient = object : WebViewClient() {
                 override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
                     val uri = request?.url ?: return false
