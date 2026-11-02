@@ -128,6 +128,19 @@ def status(request: Request):
     }
 
 
+@app.get("/api/news")
+def news_feed(request: Request):
+    require_role(request, "admin", "trader", "analyst", "viewer")
+    # No provider is connected yet: never manufacture example headlines as live news.
+    return {
+        "available": False,
+        "feed_status": "not_connected",
+        "articles": [],
+        "sentiment": {"positive": 0, "neutral": 0, "negative": 0, "score": None},
+        "message": translate("هنوز منبع خبری متصل نشده است.", request.headers.get("x-ui-language")),
+    }
+
+
 @app.post("/api/emergency-stop")
 def activate_emergency_stop(request: Request):
     require_role(request, "admin", "trader")
