@@ -10,6 +10,7 @@ from modules.risk_state_store import PersistentRiskLedger, RiskLimits
 def _router(tmp_path, monkeypatch=None):
     if monkeypatch is not None:
         monkeypatch.setenv("ERP_PIPELINE_DB", str(tmp_path / "pipeline.sqlite3"))
+        monkeypatch.setenv("ERP_PERFORMANCE_DB", str(tmp_path / "performance.sqlite3"))
     ledger = PersistentRiskLedger(
         tmp_path / "erp.sqlite3",
         RiskLimits(max_total_risk_pct=0.10, max_engine_risk_pct=0.025),
@@ -139,3 +140,24 @@ def test_brain_pipeline_quarantines_stale_or_bad_market_data(tmp_path, monkeypat
     )["run"]
     assert result["status"] == "QUARANTINED"
     assert result["error"]["code"] == "invalid_evidence"
+
+
+def test_performance_api_records_outcomes_and_reports_walk_forward(tmp_path, monkeypatch):
+    from modules.erp_api.router import ClosedTradeOutcomePayload, AgentForecastPayload
+
+    router, _, _ = _router(tmp_path, monkeypatch)
+    endpoint = _endpoint(router, "/api/erp/performance/closed-trade", "POST")
+    payload = ClosedTradeOutcomePayload(
+        trade_id="closed-001", symbol="XAUUSD", closed_at=100,
+        realized_return_pct=0.4,
+        forecasts=[AgentForecastPayload(
+            agent_id="technical", stance="bullish", confidence=0.8, as_of=90,
+        )],
+    )
+    saved = endpoint(payload, SimpleNamespace(headers={}))
+    assert saved["recorded"] is True
+    report = _endpoint(router, "/api/erp/performance/walk-forward", "GET")(
+        SimpleNamespace(headers={})
+    )
+    assert report["agents"]["technical"]["total_samples"] == 1
+    assert report["live_weights_modified"] is False
