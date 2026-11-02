@@ -638,7 +638,7 @@ main{min-width:0;padding:25px clamp(14px,3vw,38px) 42px;max-width:1600px;width:1
 .login-art:after{inset:19%;transform:rotate(34deg) scaleY(.55);border-color:#00d8d055}
 .login-art svg{position:relative;z-index:1;width:min(72%,390px);height:auto;filter:drop-shadow(0 0 34px #04baff88)}
 .status{margin-top:10px;color:var(--muted);font-size:12px;min-height:20px}
-@media(max-width:760px){.login-wrap{padding:16px;min-height:100svh}.login-layout{grid-template-columns:1fr;min-height:0;width:min(100%,480px)}.login-art{grid-row:1;min-height:180px;border-inline-start:0;border-bottom:1px solid #5575a755}.login-art svg{width:145px}.login-art:before{inset:2% 16%}.login-art:after{inset:12% 24%}.login-panel{padding:24px}.login-brand{margin-bottom:22px}.login-caption{margin-bottom:2px}}
+@media(max-width:900px){.login-wrap{padding:16px;min-height:100svh}.login-layout{grid-template-columns:minmax(0,1fr);min-height:0;width:min(100%,520px)}.login-panel{grid-row:1;padding:clamp(22px,5vw,30px)}.login-art{grid-row:2;min-height:135px;border-inline-start:0;border-top:1px solid #5575a755}.login-art svg{width:118px}.login-art:before{inset:2% 16%}.login-art:after{inset:12% 24%}.login-brand{margin-bottom:20px}.login-caption{margin-bottom:2px}.login-card h2{font-size:24px}.login-card p{font-size:12px}}
 @media(prefers-reduced-motion:reduce){.login-art *{animation:none!important}}
 .user-row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid var(--line)}.user-row:last-child{border:0}
 footer{color:var(--muted);font-size:10px;margin-top:18px;line-height:1.9}
@@ -703,7 +703,7 @@ html[dir=rtl] .nav button:hover{transform:translateX(-3px)}html[dir=ltr] .nav bu
  <div class="login-layout">
   <div class="login-panel">
    <div class="login-brand"><div class="brand"><div class="logo">F</div><div><strong>FOREX AI</strong><small>HYBRID SCALPER</small></div></div><span class="login-secure"><i></i> اتصال رمزگذاری‌شده</span></div>
-   <form id="login-form" class="card login-card" onsubmit="login(event)" autocomplete="on">
+   <form id="login-form" class="card login-card" onsubmit="login(event)" autocomplete="on" novalidate>
     <div class="login-topline"><span class="eyebrow">SECURE WORKSPACE</span><select id="login-language" class="field" aria-label="Language" onchange="setLanguage(this.value)"><option value="fa">فارسی</option><option value="en">English</option><option value="ar">العربية</option><option value="tr">Türkçe</option></select></div>
     <h2>ورود کاربران</h2><p>برای دسترسی به فضای کاری امن، مشخصات حساب خود را وارد کنید.</p>
     <label class="login-label" for="login-user">نام کاربری</label><input class="field" id="login-user" name="username" autocomplete="username" autocapitalize="none" spellcheck="false" required minlength="3" maxlength="64" placeholder="نام کاربری">
