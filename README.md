@@ -127,3 +127,22 @@ before it can be treated as a complete closed-trade source.
 but live price data, Fear & Greed source components and reconciled closed-trade
 history are not connected. The API therefore reports unavailable states and
 does not fabricate performance values. See `modules/analytics/README.md`.
+
+
+## Specialist agents, reusable skills and market-data quality
+
+The project now defines bounded specialist-agent roles in `agents/registry.yaml` and portable workflows under `skills/*/SKILL.md`. The skill set covers MT5 read-only integration, market-data validation, point-in-time research, backtest validation, FTMO/risk checks, news/macro evidence and agent review.
+
+A deterministic validator in `modules/market_data_quality` checks OHLC integrity, timestamps, duplicates, ordering, freshness, future bars, volume/spread anomalies and optional interval gaps. It does not repair source data. Its unit tests run in CI.
+
+These additions adapt research practices from public quant-finance skill catalogs; they do not copy third-party skill text or code. External skill instructions never grant tool permissions. LLM agents remain research-only; data validation and risk policy are deterministic.
+
+### Reference projects and APIs
+
+- [ML4T Agent Skills](https://github.com/ml4t/skills) — point-in-time data, leakage, walk-forward validation, cost models and research workflow discipline.
+- [Artheras Quant Skills](https://github.com/artheras/skills) — executable verification gates, strategy specification and risk review.
+- [LLMQuant Skills](https://github.com/LLMQuant/skills) — evidence-grounded finance workflows and specialist skill routing.
+- [MQL5 Python integration](https://www.mql5.com/en/docs/python_metatrader5) — terminal status, symbols, ticks, bars, market depth and account/order inspection APIs.
+- [MT5 copy_rates_from_pos](https://www.mql5.com/en/docs/python_metatrader5/mt5copyratesfrompos_py) — bar retrieval semantics; position zero is the current/forming bar, so completed-bar research must handle it separately.
+
+**Integration status:** these are architecture, workflow and quality-gate foundations. They do not mean live market/news/calendar providers are connected, specialist LLM agents are running autonomously, or MT5 live execution is enabled. The MT5 Python adapter remains read-only and live trading remains disabled.
