@@ -43,7 +43,7 @@ string DayEquityKey()
 
 double EffectiveRiskPct()
 {
-   double cap = InpRiskPerTradePct;
+   double cap = MathMin(InpRiskPerTradePct, 0.25);
    string symbol = _Symbol;
    StringToUpper(symbol);
    if(StringFind(symbol, "XAU") >= 0)
@@ -78,7 +78,8 @@ bool DailyLossAllowed()
 
    double equity = AccountInfoDouble(ACCOUNT_EQUITY);
    double loss_pct = (start_equity - equity) / start_equity * 100.0;
-   return (loss_pct < InpMaxDailyLossPct);
+   double daily_limit = MathMin(InpMaxDailyLossPct, 1.00);
+   return (loss_pct < daily_limit);
 }
 
 bool HasOpenPosition()
