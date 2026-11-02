@@ -311,7 +311,7 @@ APP_ICON = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
 </svg>"""
 
 SERVICE_WORKER = """const CACHE = "forex-ai-shell-v1";
-const SHELL = ["/app", "/manifest.webmanifest", "/app-icon.svg", "/offline"];
+const SHELL = ["/", "/app", "/manifest.webmanifest", "/app-icon.svg", "/offline"];
 self.addEventListener("install", event => {
   event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(SHELL)).then(() => self.skipWaiting()));
 });
