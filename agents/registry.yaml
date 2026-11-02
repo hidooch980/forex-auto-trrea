@@ -40,12 +40,20 @@ agents:
     outputs: [execution_constraints]
     permissions: [read_mt5]
     order_send: false
+  - id: behavior_risk_monitor
+    role: deterministic_behavior_monitor
+    inputs: [closed_trade_history, order_timestamps, risk_size_history, loss_streak, signal_age]
+    outputs: [behavior_flags, cooldown_state]
+    permissions: [evaluate_behavior_metrics]
+    fail_closed: true
+    order_send: false
   - id: ftmo_risk_controller
     role: deterministic_risk
-    inputs: [account_profile, market_context, proposed_decision]
+    inputs: [account_profile, market_context, proposed_decision, behavior_flags]
     outputs: [risk_verdict]
     permissions: [evaluate_policy]
     fail_closed: true
+    order_send: false
   - id: independent_critic
     role: validation
     inputs: [agent_outputs, source_evidence, research_report]
