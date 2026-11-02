@@ -16,6 +16,11 @@ from .i18n import catalog_for_frontend, translate
 from modules.ftmo_compliance import account_registry
 from modules.broker_directory import directory as broker_directory
 
+from modules.portfolio_risk_guard import (
+    PortfolioSnapshot, Position as RiskPosition, TradeIntent as RiskTradeIntent,
+    evaluate_portfolio,
+)
+
 app = FastAPI(title="Forex AI Hybrid Scalper", version="5.2.0")
 cfg = AppConfig()
 auth.init_auth()
@@ -34,6 +39,38 @@ class BrokerServerPayload(BaseModel):
     platform: str = Field(default="mt5", pattern="^(mt4|mt5)$")
     environment: str = Field(pattern="^(demo|live)$")
     server_name: str = Field(min_length=1, max_length=160)
+
+
+class RiskPositionPayload(BaseModel):
+    market: str = Field(min_length=1, max_length=40)
+    instrument: str = Field(min_length=1, max_length=40)
+    side: str = Field(pattern="^(long|short)$")
+    notional_usd: float = Field(gt=0, le=1000000000000)
+    stop_risk_usd: float = Field(ge=0, le=1000000000000)
+    margin_usd: float = Field(ge=0, le=1000000000000)
+    liquidity_usd_1pct: float = Field(gt=0, le=1000000000000)
+    spread_bps: float = Field(ge=0, le=1000000)
+    data_valid: bool = True
+
+
+class RiskTradePayload(BaseModel):
+    market: str = Field(min_length=1, max_length=40)
+    instrument: str = Field(min_length=1, max_length=40)
+    side: str = Field(pattern="^(long|short)$")
+    notional_usd: float = Field(gt=0, le=1000000000000)
+    stop_risk_usd: float = Field(ge=0, le=1000000000000)
+    margin_usd: float = Field(ge=0, le=1000000000000)
+    liquidity_usd_1pct: float = Field(gt=0, le=1000000000000)
+    spread_bps: float = Field(ge=0, le=1000000)
+    stop_loss_present: bool = True
+    market_data_valid: bool = True
+
+
+class PortfolioRiskPreviewPayload(BaseModel):
+    equity_usd: float = Field(gt=0, le=1000000000000000)
+    positions: list[RiskPositionPayload] = Field(default_factory=list, max_length=500)
+    proposed_order: RiskTradePayload
+    market_data_valid: bool = True
 
 class FTMOAccountPayload(BaseModel):
     label: str = Field(min_length=1, max_length=80)
@@ -256,6 +293,40 @@ def analytics_overview(request: Request):
         },
     }
 
+
+
+@app.post("/api/risk/portfolio-preview")
+def portfolio_risk_preview(payload: PortfolioRiskPreviewPayload, request: Request):
+    require_role(request, "admin", "trader", "analyst")
+    try:
+        snapshot = PortfolioSnapshot(
+            equity_usd=payload.equity_usd,
+            positions=tuple(RiskPosition(**item.model_dump()) for item in payload.positions),
+            emergency_stop=_emergency_stop_active,
+            market_data_valid=payload.market_data_valid,
+        )
+        proposed = RiskTradeIntent(**payload.proposed_order.model_dump())
+        decision = evaluate_portfolio(snapshot, proposed)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return {
+        "available": True,
+        "risk_approved": decision.approved,
+        "execution_allowed": False,
+        "live_positions_connected": False,
+        "live_market_data_connected": False,
+        "emergency_stop": _emergency_stop_active,
+        "reasons": list(decision.reasons),
+        "metrics": {
+            "total_open_risk_pct": decision.total_open_risk_pct,
+            "market_open_risk_pct": decision.market_open_risk_pct,
+            "gross_leverage": decision.gross_leverage,
+            "margin_usage_pct": decision.margin_usage_pct,
+            "instrument_concentration_pct": decision.instrument_concentration_pct,
+            "order_liquidity_participation_pct": decision.order_liquidity_participation_pct,
+        },
+        "note": "Preview only. Inputs are caller-supplied, not verified live account or venue data.",
+    }
 
 @app.post("/api/emergency-stop")
 def activate_emergency_stop(request: Request):
