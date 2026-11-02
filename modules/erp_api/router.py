@@ -144,20 +144,46 @@ def build_erp_router(require_role: Callable, ledger: PersistentRiskLedger) -> AP
                     available=validated.stance != "unavailable",
                 ))
             pipeline.stage(run_id, "FUSE", "evidence_validated", f"{len(signals)} agent outputs and {quality.rows} bars validated")
+            closes = [float(bar["close"]) for bar in raw["bars"]]
+            average_range_pct = sum(
+                (float(bar["high"]) - float(bar["low"])) / max(float(bar["close"]), 1e-12) * 100
+                for bar in raw["bars"]
+            ) / len(raw["bars"])
+            raw_scores = [signal.score for signal in signals if signal.available]
+            disagreement = min(1.0, max(0.0, 1.0 - abs(sum(raw_scores) / len(raw_scores)))) if raw_scores else 1.0
+            affect = analyze_market_affect(
+                volatility_pct=average_range_pct,
+                spread_ratio=raw["spread_pips"] / 2.5,
+                drawdown_pct=raw["drawdown_pct"],
+                consecutive_losses=0,
+                agent_disagreement=disagreement,
+                data_quality_score=1.0 if quality.valid else 0.0,
+            )
+            shadow_cells = cells.snapshot()["cells"]
+            reliability = {
+                name: cell["shadow_reliability_multiplier"]
+                for name, cell in shadow_cells.items()
+                if cell["eligible_for_shadow_weighting"]
+            }
             context = MarketContext(
                 symbol=raw["symbol"], market_data_valid=quality.valid,
                 calendar_valid=raw["calendar_valid"],
                 high_impact_blackout=raw["high_impact_blackout"],
-                emergency_stop=raw["emergency_stop"],
+                emergency_stop=raw["emergency_stop"] or affect.state == "extreme",
                 daily_loss_pct=raw["daily_loss_pct"],
                 drawdown_pct=raw["drawdown_pct"], spread_pips=raw["spread_pips"],
-                requested_risk_pct=0.025,
+                requested_risk_pct=0.025, reliability=reliability,
             )
             decision = evaluate_market(context, signals, BrainConfig())
             pipeline.stage(run_id, "RISK_GATE", "brain_decision_created", "Deterministic committee decision evaluated")
             output = {
                 "decision": decision.to_dict(),
                 "market_quality": quality.to_dict(),
+                "market_affect": {
+                    "state": affect.state, "stress_score": affect.stress_score,
+                    "flags": list(affect.flags), "human_emotion_inference": False,
+                },
+                "cell_learning_mode": "shadow_only",
                 "execution_allowed": False,
                 "live_trading_enabled": False,
                 "risk_reservation": None,
