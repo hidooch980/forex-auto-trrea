@@ -75,3 +75,36 @@ def test_profit_vault_splits_only_realized_profit():
     assert plan_profit_vault(100, .25) == (25, 75)
     with pytest.raises(ValueError):
         plan_profit_vault(-10, .25)
+
+
+
+def test_unknown_side_and_invalid_config_fail_closed():
+    invalid_side = EngineSignal("breakout", "HOLD", .9, 2000, 1990, 2020, .02, 100)
+    result = evaluate_cycle([invalid_side], [], now=100, spread_points=5, equity_usd=1000)
+    assert not result.approved
+    assert result.blocked[0][1] == "invalid_signal_geometry"
+
+    bad_config = PhantomConfig(max_total_open_risk_pct=float("nan"))
+    result = evaluate_cycle([signal("breakout")], [], now=100,
+                            spread_points=5, equity_usd=1000, config=bad_config)
+    assert not result.approved
+    assert result.blocked[0][1] == "invalid_config"
+
+
+def test_invalid_timestamp_and_cycle_time_fail_closed():
+    bad_signal = signal("breakout", timestamp=100.5)
+    result = evaluate_cycle([bad_signal], [], now=100, spread_points=5, equity_usd=1000)
+    assert not result.approved
+    assert result.blocked[0][1] == "invalid_signal_timestamp"
+
+    result = evaluate_cycle([signal("breakout")], [], now=float("nan"),
+                            spread_points=5, equity_usd=1000)
+    assert not result.approved
+    assert result.blocked[0][1] == "invalid_cycle_time"
+
+
+def test_pending_exposure_must_be_reserved_in_shared_risk_snapshot():
+    result = evaluate_cycle([signal("breakout")], [OpenRisk("pullback", .09)],
+                            now=100, spread_points=5, equity_usd=1000)
+    assert not result.approved
+    assert result.blocked[0][1] == "portfolio_risk_limit"
