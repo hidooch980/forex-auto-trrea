@@ -25,6 +25,7 @@ from modules.risk_state_store import PersistentRiskLedger
 from modules.market_radar.api import build_market_radar_router
 from modules.backtest_lab.api import build_backtest_router
 from modules.sltp_engine.api import build_sltp_router
+from modules.mt5_web_bridge.api import build_mt5_bridge_router
 
 app = FastAPI(title="Forex AI Hybrid Scalper", version="5.2.0")
 cfg = AppConfig()
@@ -131,6 +132,7 @@ app.include_router(build_erp_router(require_role, ERP_LEDGER))
 app.include_router(build_market_radar_router(require_role))
 app.include_router(build_backtest_router(require_role))
 app.include_router(build_sltp_router(require_role))
+app.include_router(build_mt5_bridge_router(require_role))
 
 
 @app.get("/api/health")
@@ -627,6 +629,7 @@ html[dir=rtl] .nav button:hover{transform:translateX(-3px)}html[dir=ltr] .nav bu
   <button data-page="market-radar" onclick="goPage('market-radar',this)"><span class="ico">⌖</span>رادار بازار</button>
   <button data-page="backtest" onclick="goPage('backtest',this)"><span class="ico">▧</span>آزمایشگاه بک‌تست</button>
   <button data-page="sltp" onclick="goPage('sltp',this)"><span class="ico">⇅</span>مدیریت هوشمند SL/TP</button>
+  <button data-page="mt5" onclick="goPage('mt5',this)"><span class="ico">◉</span>اتصال زنده MT5</button>
   <button data-page="news" onclick="goPage(&quot;news&quot;,this)"><span class="ico">▤</span>خبرها</button>
   <button data-page="performance" onclick="goPage(&quot;performance&quot;,this)"><span class="ico">▥</span>عملکرد و نبض بازار</button>
   <button data-page="analysis" onclick="goPage('analysis',this)"><span class="ico">◫</span>تحلیل بازار</button>
@@ -693,6 +696,22 @@ html[dir=rtl] .nav button:hover{transform:translateX(-3px)}html[dir=ltr] .nav bu
     <article class="card"><div class="metric-foot">ریسک تخمینی</div><div class="metric-value" id="sltp-risk">—</div></article>
    </div>
    <div class="notice">این خروجی پیشنهاد محاسباتی است، نه سفارش و نه تضمین قیمت اجرا. tick value، tick size، اسپرد و قوانین نماد باید از ترمینال متصل و برای همان حساب/نماد تازه گرفته شوند. اجرای زنده خاموش است.</div>
+  </div>
+ </section>
+ <section id="page-mt5" class="page">
+  <div class="grid">
+   <article class="card"><div class="metric-top"><span>وضعیت پل MT5</span><span class="metric-icon">◉</span></div><div class="metric-value" id="mt5-connection-state">قطع</div><div class="metric-foot" id="mt5-connection-detail">هنوز داده‌ای دریافت نشده است.</div></article>
+   <article class="card"><div class="metric-top"><span>نماد و تایم‌فریم</span></div><div class="metric-value" id="mt5-symbol">—</div><div class="metric-foot" id="mt5-timeframe">—</div></article>
+   <article class="card"><div class="metric-top"><span>Bid / Ask</span></div><div class="metric-value" id="mt5-quote">—</div><div class="metric-foot" id="mt5-spread">اسپرد: —</div></article>
+   <article class="card"><div class="metric-top"><span>Equity</span></div><div class="metric-value" id="mt5-equity">—</div><div class="metric-foot" id="mt5-account-mode">حساب: —</div></article>
+  </div>
+  <div class="card" style="margin-top:14px">
+   <div class="section-head"><h3>اتصال خواندنی MetaTrader 5</h3><span class="pill">بدون اجرای سفارش</span></div>
+   <p class="eyebrow">این صفحه فقط snapshot واقعی ترمینال را نمایش می‌دهد: قیمت، کندل‌های بسته‌شده، مشخصات نماد و وضعیت حساب. هیچ رمز حساب یا شماره حسابی دریافت یا ذخیره نمی‌شود.</p>
+   <div class="actions"><button class="primary" onclick="loadMT5Bridge()">بروزرسانی وضعیت</button><span class="status" id="mt5-updated">در انتظار اتصال</span></div>
+   <div class="notice" id="mt5-setup-notice">برای اتصال، سرویس MT5 باید روی همین Ubuntu اجرا شود و Expert Advisor فقط‌خواندنی ForexAutoWebBridge به این API داده ارسال کند. کلید پل باید در تنظیمات امن سرویس و EA تنظیم شود؛ آن را در پیام یا مخزن عمومی قرار نده.</div>
+   <div style="overflow:auto;margin-top:14px"><table class="data-table" style="width:100%"><thead><tr><th>زمان کندل</th><th>Open</th><th>High</th><th>Low</th><th>Close</th><th>Tick volume</th></tr></thead><tbody id="mt5-bars"><tr><td colspan="6">هنوز داده‌ای دریافت نشده است.</td></tr></tbody></table></div>
+   <div class="notice">وضعیت اتصال پس از ۱۲۰ ثانیه بدون داده تازه، قطع نمایش داده می‌شود. داده حساب فقط برای نمایش است. اجرای زنده و ارسال سفارش از این پل پشتیبانی نمی‌شود.</div>
   </div>
  </section>
  <section id="page-backtest" class="page">
@@ -805,13 +824,13 @@ function applyLanguage(locale){activeLocale=["fa","en","ar","tr"].includes(local
  const title=document.getElementById("page-title");if(title&&currentPage)title.textContent=t(pageTitles[currentPage]);const crumb=document.getElementById("crumb");if(crumb&&currentPage)crumb.textContent=t(pageTitles[currentPage]);try{localStorage.setItem("forexai-locale",activeLocale);}catch(e){} }
 function setLanguage(locale){applyLanguage(locale);if(currentUser){document.getElementById("role-label").textContent=t("نقش: ")+t(currentUser.role);refreshStatus();if(currentPage==="news")loadNews();if(currentPage==="performance")loadPerformance();if(currentPage==="users")loadUsers();}}
 let currentPage="overview";
-const pageTitles={performance:"عملکرد و نبض بازار",news:"اخبار بازار",overview:"داشبورد معاملاتی",signals:"سیگنال‌های معاملاتی","market-radar":"رادار بازار",backtest:"آزمایشگاه بک‌تست",sltp:"مدیریت هوشمند SL/TP",analysis:"تحلیل بازار",simulator:"شبیه‌ساز تصمیم",modules:"ماژول‌های هوش مصنوعی",ftmo:"حساب‌های FTMO",users:"مدیریت کاربران"};
+const pageTitles={performance:"عملکرد و نبض بازار",news:"اخبار بازار",overview:"داشبورد معاملاتی",signals:"سیگنال‌های معاملاتی","market-radar":"رادار بازار",backtest:"آزمایشگاه بک‌تست",sltp:"مدیریت هوشمند SL/TP",mt5:"اتصال زنده MT5",analysis:"تحلیل بازار",simulator:"شبیه‌ساز تصمیم",modules:"ماژول‌های هوش مصنوعی",ftmo:"حساب‌های FTMO",users:"مدیریت کاربران"};
 let csrfToken='',currentUser=null;
 async function api(path,options={}){const headers=Object.assign({"X-UI-Language":activeLocale},options.headers||{});if(options.method&&options.method!=='GET')headers['X-CSRF-Token']=csrfToken;return fetch(path,Object.assign({credentials:'same-origin'},options,{headers}));}
 async function login(){const msg=document.getElementById('login-message');try{const r=await fetch('/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json','X-UI-Language':activeLocale},body:JSON.stringify({username:document.getElementById('login-user').value,password:document.getElementById('login-pass').value})});const d=await r.json();if(!r.ok)throw Error(t('ورود ناموفق بود')+(d.detail?' · '+d.detail:''));csrfToken=d.csrf_token;document.getElementById('login-pass').value='';showApp(d.user);}catch(e){msg.textContent=e.message;}}
 function showApp(user){currentUser=user;document.getElementById('login-screen').hidden=true;document.getElementById('app-shell').hidden=false;document.getElementById('account-label').textContent=user.username;document.getElementById('role-label').textContent=t('نقش: ')+t(user.role);document.getElementById('avatar').textContent=(user.username||'U').slice(0,1).toUpperCase();document.getElementById('users-nav').hidden=user.role!=='admin';refreshStatus();loadFtmoProducts();loadFtmoAccounts();if(user.role==='admin')loadUsers();}
 async function restoreSession(){try{const r=await fetch('/api/auth/me',{credentials:'same-origin'});if(!r.ok)return;const d=await r.json();csrfToken=d.csrf_token;showApp(d.user);}catch(e){}}
-function goPage(name,button){currentPage=name;if(name==='users'&&(!currentUser||currentUser.role!=='admin'))return;document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));document.getElementById('page-'+name).classList.add('active');document.querySelectorAll('.nav button').forEach(b=>b.classList.remove('active'));if(button)button.classList.add('active');if(name==='news')loadNews();if(name==='performance')loadPerformance();if(name==='ftmo'){loadFtmoProducts();loadFtmoAccounts();}document.getElementById('page-title').textContent=t(pageTitles[name]);document.getElementById('crumb').textContent=t(pageTitles[name]);}
+function goPage(name,button){currentPage=name;if(name==='users'&&(!currentUser||currentUser.role!=='admin'))return;document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));document.getElementById('page-'+name).classList.add('active');document.querySelectorAll('.nav button').forEach(b=>b.classList.remove('active'));if(button)button.classList.add('active');if(name==='news')loadNews();if(name==='mt5')loadMT5Bridge();if(name==='performance')loadPerformance();if(name==='ftmo'){loadFtmoProducts();loadFtmoAccounts();}document.getElementById('page-title').textContent=t(pageTitles[name]);document.getElementById('crumb').textContent=t(pageTitles[name]);}
 async function runSLTP(){
  const msg=document.getElementById('sltp-message'),button=document.getElementById('sltp-run'),out=document.getElementById('sltp-result');
  out.hidden=true;button.disabled=true;msg.textContent='در حال اعتبارسنجی مشخصات بروکر و محاسبه...';
@@ -958,6 +977,32 @@ async function installPwa(){if(!deferredInstallPrompt)return;deferredInstallProm
 if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('/service-worker.js').catch(()=>{}));}
 try{applyLanguage(localStorage.getItem('forexai-locale')||'fa');}catch(e){applyLanguage('fa');}
 restoreSession();
+
+async function loadMT5Bridge(){
+ const state=document.getElementById('mt5-connection-state');
+ const detail=document.getElementById('mt5-connection-detail');
+ try{
+  const sr=await api('/api/mt5/bridge/status');
+  const st=await sr.json();
+  if(!sr.ok)throw Error(st.detail||'خطا در دریافت وضعیت پل');
+  state.textContent=st.connected?'متصل':'قطع';
+  detail.textContent=st.connected?'داده تازه · '+st.age_seconds+' ثانیه قبل':'هنوز snapshot تازه دریافت نشده است';
+  document.getElementById('mt5-symbol').textContent=st.symbol||'—';
+  document.getElementById('mt5-timeframe').textContent=st.timeframe||'—';
+  document.getElementById('mt5-account-mode').textContent='حساب: '+(st.account_mode||'—')+' · '+(st.server_name||'');
+  document.getElementById('mt5-setup-notice').textContent=st.configured
+   ?'کلید پل روی سرور تنظیم شده است. برای نمایش داده زنده، EA فقط‌خواندنی باید در ترمینال MT5 اجرا و به این endpoint متصل باشد.'
+   :'کلید پل هنوز تنظیم نشده است. ابتدا کلید امن MT5_BRIDGE_TOKEN را در محیط سرویس تعریف کن؛ سپس همان کلید را فقط در تنظیمات EA قرار بده.';
+  const r=await api('/api/mt5/bridge/snapshot');
+  if(!r.ok){document.getElementById('mt5-bars').innerHTML='<tr><td colspan="6">در انتظار اولین snapshot از MT5</td></tr>';return;}
+  const d=await r.json(),p=d.snapshot;
+  document.getElementById('mt5-quote').textContent=Number(p.bid).toFixed(p.digits)+' / '+Number(p.ask).toFixed(p.digits);
+  document.getElementById('mt5-spread').textContent='اسپرد: '+Number(p.spread_points).toFixed(1)+' points';
+  document.getElementById('mt5-equity').textContent=Number(p.equity).toFixed(2)+' '+p.currency;
+  document.getElementById('mt5-updated').textContent='آخرین دریافت: '+new Date(d.received_at*1000).toLocaleString();
+  document.getElementById('mt5-bars').innerHTML=(p.bars||[]).slice(-30).reverse().map(c=>'<tr><td>'+new Date(c.time*1000).toLocaleString()+'</td><td>'+c.open+'</td><td>'+c.high+'</td><td>'+c.low+'</td><td>'+c.close+'</td><td>'+c.tick_volume+'</td></tr>').join('');
+ }catch(e){state.textContent='خطا';detail.textContent=e.message;}
+}
 </script>
 </body></html>
 """
