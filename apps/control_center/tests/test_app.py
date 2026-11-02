@@ -156,3 +156,47 @@ def test_viewer_cannot_add_broker_server(tmp_path, monkeypatch):
         assert False, "viewer must not be allowed to write broker servers"
     except app_module.HTTPException as exc:
         assert exc.status_code == 403
+
+def test_portfolio_risk_preview_is_authenticated_and_never_executes():
+    request, _ = make_user("trader")
+    request.method = "POST"
+    payload = app_module.PortfolioRiskPreviewPayload(
+        equity_usd=10000,
+        positions=[
+            app_module.RiskPositionPayload(
+                market="forex", instrument="EURUSD", side="long",
+                notional_usd=1000, stop_risk_usd=50, margin_usd=100,
+                liquidity_usd_1pct=50000, spread_bps=2,
+            )
+        ],
+        proposed_order=app_module.RiskTradePayload(
+            market="crypto_futures", instrument="BTCUSDT", side="short",
+            notional_usd=1000, stop_risk_usd=50, margin_usd=250,
+            liquidity_usd_1pct=50000, spread_bps=5,
+        ),
+    )
+    result = app_module.portfolio_risk_preview(payload, request)
+    assert result["available"] is True
+    assert result["execution_allowed"] is False
+    assert result["live_positions_connected"] is False
+    assert result["emergency_stop"] is True
+    assert "portfolio_emergency_stop" in result["reasons"]
+    assert result["metrics"]["total_open_risk_pct"] == 1.0
+
+
+def test_viewer_cannot_call_portfolio_risk_preview():
+    request, _ = make_user("viewer")
+    request.method = "POST"
+    payload = app_module.PortfolioRiskPreviewPayload(
+        equity_usd=10000,
+        proposed_order=app_module.RiskTradePayload(
+            market="crypto_spot", instrument="BTCUSDT", side="long",
+            notional_usd=500, stop_risk_usd=10, margin_usd=0,
+            liquidity_usd_1pct=10000, spread_bps=5,
+        ),
+    )
+    try:
+        app_module.portfolio_risk_preview(payload, request)
+        assert False, "viewer must not call portfolio risk preview"
+    except app_module.HTTPException as exc:
+        assert exc.status_code == 403
