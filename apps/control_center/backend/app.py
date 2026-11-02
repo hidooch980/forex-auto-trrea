@@ -141,6 +141,24 @@ def news_feed(request: Request):
     }
 
 
+@app.get("/api/analytics/overview")
+def analytics_overview(request: Request):
+    require_role(request, "admin", "trader", "analyst", "viewer")
+    # No synthetic figures: real feeds and closed trade history are not connected.
+    return {
+        "available": False,
+        "market_data_status": "not_connected",
+        "trade_history_status": "not_connected",
+        "fear_greed": {"available": False, "score": None, "label": "unavailable", "components": {}},
+        "market_heatmap": [],
+        "signal_performance": {
+            "available": False, "total_closed": 0, "wins": 0, "losses": 0,
+            "win_rate_pct": None, "average_profit": None, "net_profit": None,
+            "profit_factor": None, "symbols": [], "heatmap": [],
+        },
+    }
+
+
 @app.post("/api/emergency-stop")
 def activate_emergency_stop(request: Request):
     require_role(request, "admin", "trader")
@@ -281,6 +299,7 @@ html[dir=rtl] .nav button:hover{transform:translateX(-3px)}html[dir=ltr] .nav bu
   <button class="active" data-page="overview" onclick="goPage('overview',this)"><span class="ico">▦</span>نمای کلی</button>
   <button data-page="signals" onclick="goPage('signals',this)"><span class="ico">⌁</span>سیگنال‌ها</button>
   <button data-page="news" onclick="goPage(&quot;news&quot;,this)"><span class="ico">▤</span>خبرها</button>
+  <button data-page="performance" onclick="goPage(&quot;performance&quot;,this)"><span class="ico">▥</span>عملکرد و نبض بازار</button>
   <button data-page="analysis" onclick="goPage('analysis',this)"><span class="ico">◫</span>تحلیل بازار</button>
   <button data-page="simulator" onclick="goPage('simulator',this)"><span class="ico">◉</span>شبیه‌ساز</button>
   <button data-page="modules" onclick="goPage('modules',this)"><span class="ico">◇</span>ماژول‌های AI</button>
@@ -323,6 +342,32 @@ html[dir=rtl] .nav button:hover{transform:translateX(-3px)}html[dir=ltr] .nav bu
    <div class="notice">پس از اتصال منبع معتبر، خبرها همراه با تیتر، خلاصه، تحلیل، زمان انتشار، منبع و احساسات بازار نمایش داده می‌شوند.</div>
   </div>
  </section>
+ <section id="page-performance" class="page">
+  <div class="card">
+   <div class="section-head"><h3>عملکرد سیگنال‌ها</h3><span class="pill" id="performance-status">تاریخچه معاملات متصل نیست</span></div>
+   <div class="grid" style="margin-top:0">
+    <article class="card"><div class="metric-top"><span>نرخ برد</span><span class="metric-icon">％</span></div><div class="metric-value" id="perf-win-rate">—</div><div class="metric-foot">فقط معاملات بسته‌شده</div></article>
+    <article class="card"><div class="metric-top"><span>میانگین سود</span><span class="metric-icon">↗</span></div><div class="metric-value" id="perf-average">—</div><div class="metric-foot">سود خالص هر معامله</div></article>
+    <article class="card"><div class="metric-top"><span>سود خالص</span><span class="metric-icon">◈</span></div><div class="metric-value" id="perf-net">—</div><div class="metric-foot">پس از هزینه‌ها</div></article>
+    <article class="card"><div class="metric-top"><span>Profit Factor</span><span class="metric-icon">◇</span></div><div class="metric-value" id="perf-factor">—</div><div class="metric-foot">سود ناخالص تقسیم بر زیان ناخالص</div></article>
+   </div>
+   <div class="notice" id="performance-empty">برای محاسبه عملکرد، تاریخچه معاملات بسته‌شده و نتیجه خالص هر معامله باید متصل شود.</div>
+  </div>
+  <div class="content-grid">
+   <article class="card"><div class="section-head"><h3>شاخص ترس و طمع</h3><span class="pill" id="fear-greed-status">داده کافی نیست</span></div>
+    <div style="display:flex;align-items:center;justify-content:center;gap:22px;padding:24px 8px;flex-wrap:wrap">
+     <div id="fear-greed-gauge" style="width:150px;height:150px;border-radius:50%;display:grid;place-items:center;background:conic-gradient(var(--line) 0deg 360deg)"><div style="width:116px;height:116px;border-radius:50%;background:var(--panel);display:grid;place-items:center;text-align:center"><b id="fear-greed-score" style="font-size:30px">—</b><small>0–100</small></div></div>
+     <div><h3 id="fear-greed-label">در انتظار داده بازار</h3><p class="eyebrow">مومنتوم، پهنای بازار، نوسان و تقاضای دارایی امن</p></div>
+    </div><div class="notice">شاخص فقط پس از دریافت مؤلفه‌های معتبر بازار محاسبه می‌شود؛ مقدار نمایشی یا حدسی نداریم.</div>
+   </article>
+   <article class="card"><div class="section-head"><h3>نقشه زنده بازار</h3><span class="pill" id="market-map-status">فید قیمت متصل نیست</span></div><div id="live-market-map" class="notice">با اتصال قیمت لحظه‌ای نمادها، نقشه تغییرات بازار اینجا نمایش داده می‌شود.</div></article>
+  </div>
+  <article class="card"><div class="section-head"><h3>نقشه حرارتی عملکرد سیگنال‌ها</h3><span class="pill">بر اساس سود خالص میانگین</span></div><div id="signal-heatmap" class="notice">پس از ثبت معاملات بسته‌شده، عملکرد مثبت و منفی هر نماد در این نقشه نمایش داده می‌شود.</div></article>
+  <article class="card"><div class="section-head"><h3>جدول رتبه‌بندی نمادها</h3><span class="eyebrow">مرتب‌شده بر اساس میانگین سود</span></div>
+   <div class="table-wrap"><table class="data-table"><thead><tr><th>رتبه</th><th>نماد</th><th>تعداد معاملات</th><th>نرخ برد</th><th>میانگین سود</th><th>سود خالص</th></tr></thead><tbody id="symbol-ranking"><tr><td colspan="6">هنوز تاریخچه معاملات متصل نشده است.</td></tr></tbody></table></div>
+  </article>
+ </section>
+
  <section id="page-analysis" class="page"><div class="card"><div class="section-head"><h3>تحلیل چندتایم‌فریمی</h3><span class="pill">در انتظار داده بازار</span></div><div class="modules"><div class="module"><b>ساختار قیمت</b><small>Market Structure</small></div><div class="module"><b>SMC / ICT</b><small>مفاهیم نقدینگی و نواحی</small></div><div class="module"><b>رژیم بازار</b><small>تشخیص روند و نوسان</small></div></div><div class="notice">تا زمان اتصال فید معتبر قیمت، هیچ تحلیل یا جهت بازار به‌عنوان نتیجه زنده ارائه نمی‌شود.</div></div></section>
  <section id="page-simulator" class="page"><div class="card"><div class="section-head"><h3>شبیه‌ساز تصمیم</h3><span class="pill">آزمایشی</span></div><p class="eyebrow">این ابزار صرفاً منطق محافظتی را در شرایط نمونه نشان می‌دهد.</p><div class="actions"><select class="field" id="symbol"><option>XAUUSD</option><option>EURUSD</option><option>GBPUSD</option><option>USDJPY</option></select><button class="primary" onclick="preview()">اجرای پیش‌نمایش</button></div><div id="preview" class="status">برای شروع، نماد را انتخاب کنید.</div></div></section>
  <section id="page-modules" class="page"><div class="card"><div class="section-head"><h3>ماژول‌های هوش مصنوعی</h3><span class="pill">نمای معماری</span></div><div class="modules"><div class="module"><b>Market Scanner</b><small>اسکن نمادها و شرایط بازار</small></div><div class="module"><b>News Guard</b><small>فیلتر رویدادهای خبری</small></div><div class="module"><b>Adaptive AI</b><small>انتخاب رژیم و استراتژی</small></div><div class="module"><b>Ensemble AI</b><small>ترکیب مدل‌های تحلیلی</small></div><div class="module"><b>Smart Exit</b><small>مدیریت خروج و اهداف</small></div><div class="module"><b>Risk Manager</b><small>کنترل سرمایه و محدودیت‌ها</small></div></div></div></section>
@@ -337,15 +382,15 @@ const originalTextNodes=new WeakMap();
 function applyLanguage(locale){activeLocale=["fa","en","ar","tr"].includes(locale)?locale:"fa";const rtl=["fa","ar"].includes(activeLocale);document.documentElement.lang=activeLocale;document.documentElement.dir=rtl?"rtl":"ltr";["language-select","login-language"].forEach(id=>{const select=document.getElementById(id);if(select)select.value=activeLocale;});const walker=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);let node;while(node=walker.nextNode()){if(!node.parentElement||["SCRIPT","STYLE"].includes(node.parentElement.tagName))continue;if(!originalTextNodes.has(node))originalTextNodes.set(node,node.nodeValue);const original=originalTextNodes.get(node);const trimmed=original.trim();if(!trimmed)continue;const translated=t(trimmed);node.nodeValue=original.replace(trimmed,translated);}
  document.querySelectorAll("[placeholder],[title],[aria-label]").forEach(el=>{for(const attr of ["placeholder","title","aria-label"]){if(!el.hasAttribute(attr))continue;const key="i18n"+attr[0].toUpperCase()+attr.slice(1);if(!el.dataset[key])el.dataset[key]=el.getAttribute(attr);el.setAttribute(attr,t(el.dataset[key]));}});
  const title=document.getElementById("page-title");if(title&&currentPage)title.textContent=t(pageTitles[currentPage]);const crumb=document.getElementById("crumb");if(crumb&&currentPage)crumb.textContent=t(pageTitles[currentPage]);try{localStorage.setItem("forexai-locale",activeLocale);}catch(e){} }
-function setLanguage(locale){applyLanguage(locale);if(currentUser){document.getElementById("role-label").textContent=t("نقش: ")+t(currentUser.role);refreshStatus();if(currentPage==="news")loadNews();if(currentPage==="users")loadUsers();}}
+function setLanguage(locale){applyLanguage(locale);if(currentUser){document.getElementById("role-label").textContent=t("نقش: ")+t(currentUser.role);refreshStatus();if(currentPage==="news")loadNews();if(currentPage==="performance")loadPerformance();if(currentPage==="users")loadUsers();}}
 let currentPage="overview";
-const pageTitles={news:"اخبار بازار",overview:"داشبورد معاملاتی",signals:"سیگنال‌های معاملاتی",analysis:"تحلیل بازار",simulator:"شبیه‌ساز تصمیم",modules:"ماژول‌های هوش مصنوعی",users:"مدیریت کاربران"};
+const pageTitles={performance:"عملکرد و نبض بازار",news:"اخبار بازار",overview:"داشبورد معاملاتی",signals:"سیگنال‌های معاملاتی",analysis:"تحلیل بازار",simulator:"شبیه‌ساز تصمیم",modules:"ماژول‌های هوش مصنوعی",users:"مدیریت کاربران"};
 let csrfToken='',currentUser=null;
 async function api(path,options={}){const headers=Object.assign({"X-UI-Language":activeLocale},options.headers||{});if(options.method&&options.method!=='GET')headers['X-CSRF-Token']=csrfToken;return fetch(path,Object.assign({credentials:'same-origin'},options,{headers}));}
 async function login(){const msg=document.getElementById('login-message');try{const r=await fetch('/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json','X-UI-Language':activeLocale},body:JSON.stringify({username:document.getElementById('login-user').value,password:document.getElementById('login-pass').value})});const d=await r.json();if(!r.ok)throw Error(t('ورود ناموفق بود')+(d.detail?' · '+d.detail:''));csrfToken=d.csrf_token;document.getElementById('login-pass').value='';showApp(d.user);}catch(e){msg.textContent=e.message;}}
 function showApp(user){currentUser=user;document.getElementById('login-screen').hidden=true;document.getElementById('app-shell').hidden=false;document.getElementById('account-label').textContent=user.username;document.getElementById('role-label').textContent=t('نقش: ')+t(user.role);document.getElementById('avatar').textContent=(user.username||'U').slice(0,1).toUpperCase();document.getElementById('users-nav').hidden=user.role!=='admin';refreshStatus();if(user.role==='admin')loadUsers();}
 async function restoreSession(){try{const r=await fetch('/api/auth/me',{credentials:'same-origin'});if(!r.ok)return;const d=await r.json();csrfToken=d.csrf_token;showApp(d.user);}catch(e){}}
-function goPage(name,button){currentPage=name;if(name==='users'&&(!currentUser||currentUser.role!=='admin'))return;document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));document.getElementById('page-'+name).classList.add('active');document.querySelectorAll('.nav button').forEach(b=>b.classList.remove('active'));if(button)button.classList.add('active');if(name==='news')loadNews();document.getElementById('page-title').textContent=t(pageTitles[name]);document.getElementById('crumb').textContent=t(pageTitles[name]);}
+function goPage(name,button){currentPage=name;if(name==='users'&&(!currentUser||currentUser.role!=='admin'))return;document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));document.getElementById('page-'+name).classList.add('active');document.querySelectorAll('.nav button').forEach(b=>b.classList.remove('active'));if(button)button.classList.add('active');if(name==='news')loadNews();if(name==='performance')loadPerformance();document.getElementById('page-title').textContent=t(pageTitles[name]);document.getElementById('crumb').textContent=t(pageTitles[name]);}
 function toggleTheme(){document.documentElement.classList.toggle('light');}
 async function logout(){try{await api('/api/auth/logout',{method:'POST'});}finally{csrfToken='';location.reload();}}
 async function loadUsers(){const el=document.getElementById('users-list');try{const r=await fetch('/api/users',{headers:{'X-UI-Language':activeLocale}});const d=await r.json();if(!r.ok)throw Error(d.detail||'خطا');el.replaceChildren();d.users.forEach(u=>{const row=document.createElement('div');row.className='user-row';const label=document.createElement('span');label.textContent=u.username+' · '+t(u.role)+' · '+(u.active?t('فعال'):t('غیرفعال'));row.appendChild(label);if(u.role!=='admin'){const b=document.createElement('button');b.className='ghost';b.textContent=u.active?t('غیرفعال‌کردن'):t('فعال‌کردن');b.onclick=()=>setUserActive(u.id,!u.active);row.appendChild(b);}el.appendChild(row);});}catch(e){el.textContent=e.message;}}
