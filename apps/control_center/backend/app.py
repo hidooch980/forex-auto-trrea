@@ -710,7 +710,7 @@ html[dir=rtl] .nav button:hover{transform:translateX(-3px)}html[dir=ltr] .nav bu
    <p class="eyebrow">این صفحه فقط snapshot واقعی ترمینال را نمایش می‌دهد: قیمت، کندل‌های بسته‌شده، مشخصات نماد و وضعیت حساب. هیچ رمز حساب یا شماره حسابی دریافت یا ذخیره نمی‌شود.</p>
    <div class="actions"><button class="primary" onclick="loadMT5Bridge()">بروزرسانی وضعیت</button><span class="status" id="mt5-updated">در انتظار اتصال</span></div>
    <div class="notice" id="mt5-setup-notice">برای اتصال، سرویس MT5 باید روی همین Ubuntu اجرا شود و Expert Advisor فقط‌خواندنی ForexAutoWebBridge به این API داده ارسال کند. کلید پل باید در تنظیمات امن سرویس و EA تنظیم شود؛ آن را در پیام یا مخزن عمومی قرار نده.</div>
-   <div style="overflow:auto;margin-top:14px"><table class="data-table" style="width:100%"><thead><tr><th>زمان کندل</th><th>Open</th><th>High</th><th>Low</th><th>Close</th><th>Tick volume</th></tr></thead><tbody id="mt5-bars"><tr><td colspan="6">هنوز داده‌ای دریافت نشده است.</td></tr></tbody></table></div>
+   <div style="overflow:auto;margin-top:14px"><table class="data-table" style="width:100%"><thead><tr><th>زمان بروکرِ کندل</th><th>Open</th><th>High</th><th>Low</th><th>Close</th><th>Tick volume</th></tr></thead><tbody id="mt5-bars"><tr><td colspan="6">هنوز داده‌ای دریافت نشده است.</td></tr></tbody></table></div>
    <div class="notice">وضعیت اتصال پس از ۱۲۰ ثانیه بدون داده تازه، قطع نمایش داده می‌شود. داده حساب فقط برای نمایش است. اجرای زنده و ارسال سفارش از این پل پشتیبانی نمی‌شود.</div>
   </div>
  </section>
@@ -830,7 +830,7 @@ async function api(path,options={}){const headers=Object.assign({"X-UI-Language"
 async function login(){const msg=document.getElementById('login-message');try{const r=await fetch('/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json','X-UI-Language':activeLocale},body:JSON.stringify({username:document.getElementById('login-user').value,password:document.getElementById('login-pass').value})});const d=await r.json();if(!r.ok)throw Error(t('ورود ناموفق بود')+(d.detail?' · '+d.detail:''));csrfToken=d.csrf_token;document.getElementById('login-pass').value='';showApp(d.user);}catch(e){msg.textContent=e.message;}}
 function showApp(user){currentUser=user;document.getElementById('login-screen').hidden=true;document.getElementById('app-shell').hidden=false;document.getElementById('account-label').textContent=user.username;document.getElementById('role-label').textContent=t('نقش: ')+t(user.role);document.getElementById('avatar').textContent=(user.username||'U').slice(0,1).toUpperCase();document.getElementById('users-nav').hidden=user.role!=='admin';refreshStatus();loadFtmoProducts();loadFtmoAccounts();if(user.role==='admin')loadUsers();}
 async function restoreSession(){try{const r=await fetch('/api/auth/me',{credentials:'same-origin'});if(!r.ok)return;const d=await r.json();csrfToken=d.csrf_token;showApp(d.user);}catch(e){}}
-function goPage(name,button){currentPage=name;if(name==='users'&&(!currentUser||currentUser.role!=='admin'))return;document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));document.getElementById('page-'+name).classList.add('active');document.querySelectorAll('.nav button').forEach(b=>b.classList.remove('active'));if(button)button.classList.add('active');if(name==='news')loadNews();if(name==='mt5')loadMT5Bridge();if(name==='performance')loadPerformance();if(name==='ftmo'){loadFtmoProducts();loadFtmoAccounts();}document.getElementById('page-title').textContent=t(pageTitles[name]);document.getElementById('crumb').textContent=t(pageTitles[name]);}
+function goPage(name,button){if(name==='users'&&(!currentUser||currentUser.role!=='admin'))return;if(mt5RefreshTimer){clearInterval(mt5RefreshTimer);mt5RefreshTimer=null;}currentPage=name;document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));document.getElementById('page-'+name).classList.add('active');document.querySelectorAll('.nav button').forEach(b=>b.classList.remove('active'));if(button)button.classList.add('active');if(name==='news')loadNews();if(name==='mt5'){loadMT5Bridge();mt5RefreshTimer=setInterval(()=>{if(currentPage==='mt5')loadMT5Bridge();},15000);}if(name==='performance')loadPerformance();if(name==='ftmo'){loadFtmoProducts();loadFtmoAccounts();}document.getElementById('page-title').textContent=t(pageTitles[name]);document.getElementById('crumb').textContent=t(pageTitles[name]);}
 async function runSLTP(){
  const msg=document.getElementById('sltp-message'),button=document.getElementById('sltp-run'),out=document.getElementById('sltp-result');
  out.hidden=true;button.disabled=true;msg.textContent='در حال اعتبارسنجی مشخصات بروکر و محاسبه...';
@@ -978,6 +978,7 @@ if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.se
 try{applyLanguage(localStorage.getItem('forexai-locale')||'fa');}catch(e){applyLanguage('fa');}
 restoreSession();
 
+let mt5RefreshTimer=null;
 async function loadMT5Bridge(){
  const state=document.getElementById('mt5-connection-state');
  const detail=document.getElementById('mt5-connection-detail');
@@ -1000,7 +1001,7 @@ async function loadMT5Bridge(){
   document.getElementById('mt5-spread').textContent='اسپرد: '+Number(p.spread_points).toFixed(1)+' points';
   document.getElementById('mt5-equity').textContent=Number(p.equity).toFixed(2)+' '+p.currency;
   document.getElementById('mt5-updated').textContent='آخرین دریافت: '+new Date(d.received_at*1000).toLocaleString();
-  document.getElementById('mt5-bars').innerHTML=(p.bars||[]).slice(-30).reverse().map(c=>'<tr><td>'+new Date(c.time*1000).toLocaleString()+'</td><td>'+c.open+'</td><td>'+c.high+'</td><td>'+c.low+'</td><td>'+c.close+'</td><td>'+c.tick_volume+'</td></tr>').join('');
+  document.getElementById('mt5-bars').innerHTML=(p.bars||[]).slice(-30).reverse().map(c=>'<tr><td>'+new Date(c.time*1000).toISOString().slice(0,16).replace('T',' ')+' (Broker)'+'</td><td>'+c.open+'</td><td>'+c.high+'</td><td>'+c.low+'</td><td>'+c.close+'</td><td>'+c.tick_volume+'</td></tr>').join('');
  }catch(e){state.textContent='خطا';detail.textContent=e.message;}
 }
 </script>
