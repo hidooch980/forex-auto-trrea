@@ -84,3 +84,29 @@ def test_dashboard_contains_analytics_page_and_localized_navigation():
     assert 'id="fear-greed-score"' in html
     assert 'id="symbol-ranking"' in html
     assert "loadPerformance" in html
+
+
+def test_public_site_and_pwa_manifest_are_served():
+    site = app_module.public_site()
+    manifest = app_module.pwa_manifest()
+    assert "Forex AI" in site
+    assert 'href="/manifest.webmanifest"' in site
+    assert 'href="/app"' in site
+    assert manifest.media_type == "application/manifest+json"
+    assert '"start_url": "/app"' in manifest.body.decode()
+
+
+def test_pwa_service_worker_does_not_cache_private_api_responses():
+    worker = app_module.service_worker()
+    source = worker.body.decode()
+    assert 'url.pathname.startsWith("/api/")' in source
+    assert '"/manifest.webmanifest"' in source
+    assert '"/offline"' in source
+
+
+def test_app_route_contains_installable_pwa_metadata_and_ftmo_management():
+    html = app_module.dashboard()
+    assert 'rel="manifest"' in html
+    assert 'id="install-app"' in html
+    assert 'id="page-ftmo"' in html
+    assert "saveFtmoAccount" in html
