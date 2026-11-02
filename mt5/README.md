@@ -10,8 +10,11 @@ Python Master Brain and must not be treated as a production-ready trading system
 
 - `InpEnableLiveTrading = false`: no order is sent unless the operator explicitly enables it.
 - Hard maximum risk is 0.25% of equity per FX trade, regardless of a larger input value.
-- XAU symbols (symbol name contains `XAU`) are capped at 0.10%.
-- Daily equity loss ceiling is hard-capped at 1.00%.
+- XAU symbols (symbol name contains `XAU`) are hard-capped at 0.10%, even if
+  `InpXauRiskCapPct` is configured higher.
+- Daily equity loss ceiling is hard-capped at 1.00%. The starting equity baseline
+  is shared by all EA charts for the same account and broker-server date, rather
+  than being reset separately for each symbol.
 - One open position per symbol and magic number.
 - A fresh, approved brain signal, confidence threshold, stop distance, spread check,
   terminal permission, free-margin check and valid broker stop distances are required.
