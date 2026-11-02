@@ -188,3 +188,16 @@ The four strategy names are independent proposal slots, not four completed profi
 ```bash
 PYTHONPATH=modules python -m pytest -q modules/xauusd_phantom/tests
 ```
+
+
+## Persistent risk ledger and circuit breakers
+
+`modules/risk_state_store` adds a restart-safe SQLite ledger for risk reservations. Pending orders and open positions both reserve risk; the reservation is released only after a confirmed `CLOSED` or `CANCELLED` state transition. Reservation IDs are unique, state transitions are validated, and reservation checks use SQLite write transactions so concurrent callers cannot both spend the same risk budget.
+
+The ledger persists active risk by strategy engine, total reserved risk, daily starting equity, account high-water equity, daily-loss and peak-drawdown circuit breakers, and an append-only audit trail. The daily lock resets automatically on the next UTC day; the peak-drawdown lock requires an explicit, reasoned operator unlock. The default limits mirror the XAUUSD Phantom research budget (0.10% total, 0.025% per engine), with 1% daily loss and 5% peak drawdown thresholds.
+
+This is a storage and policy primitive, not yet an account-history reconciler or a live execution integration. A trusted adapter must reconcile broker order/position IDs and actual stop-loss cash risk after every fill, partial fill, cancellation, close, reconnect and restart. Until that adapter is connected and verified, the ledger must not be treated as a live account's source of truth, and order execution remains disabled. Run its tests with:
+
+```bash
+python -m pytest -q modules/risk_state_store/tests
+```
