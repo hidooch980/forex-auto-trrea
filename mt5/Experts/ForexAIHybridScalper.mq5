@@ -43,9 +43,11 @@ string ConsumedSignalKey()
 
 string DayEquityKey()
 {
+   // One shared baseline per trading account and broker-server day.
+   // Deliberately excludes symbol so every EA chart observes the same account stop.
    string day = TimeToString(TimeCurrent(), TIME_DATE);
    StringReplace(day, ".", "");
-   return StringFormat("FAI.%I64d.%s.%s", AccountInfoInteger(ACCOUNT_LOGIN), _Symbol, day);
+   return StringFormat("FAI.%I64d.ACCOUNT.%s", AccountInfoInteger(ACCOUNT_LOGIN), day);
 }
 
 double EffectiveRiskPct()
@@ -54,7 +56,7 @@ double EffectiveRiskPct()
    string symbol = _Symbol;
    StringToUpper(symbol);
    if(StringFind(symbol, "XAU") >= 0)
-      cap = MathMin(cap, InpXauRiskCapPct);
+      cap = MathMin(cap, MathMin(InpXauRiskCapPct, 0.10));
    return cap;
 }
 
