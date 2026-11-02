@@ -239,6 +239,7 @@ def build_erp_router(require_role: Callable, ledger: PersistentRiskLedger) -> AP
                 {"id": "xauusd_phantom", "state": "risk_planner_only", "api": "/api/erp/risk/reservations"},
                 {"id": "persistent_risk_ledger", "state": "connected", "api": "/api/erp/risk/snapshot"},
                 {"id": "data_pipeline_error_center", "state": "connected", "api": "/api/erp/brain/pipeline/health"},
+                {"id": "agent_performance_memory", "state": "connected", "api": "/api/erp/performance/walk-forward"},
                 {"id": "portfolio_risk_guard", "state": "preview_only", "api": "/api/risk/portfolio-preview"},
                 {"id": "broker_directory", "state": "connected", "api": "/api/brokers"},
                 {"id": "ftmo_registry", "state": "connected", "api": "/api/ftmo/accounts"},
