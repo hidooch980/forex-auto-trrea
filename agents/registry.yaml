@@ -1,0 +1,59 @@
+schema_version: "1.0"
+default_mode: research_only
+live_execution_enabled: false
+agents:
+  - id: market_data_sentinel
+    role: data_quality
+    inputs: [mt5_ticks, mt5_bars, symbol_specs, provider_metadata]
+    outputs: [validated_market_snapshot, quality_report]
+    permissions: [read_market_data]
+    fail_closed: true
+  - id: technical_structure
+    role: technical_analysis
+    inputs: [validated_market_snapshot, historical_bars]
+    outputs: [technical_view]
+    permissions: [read_validated_market_data]
+  - id: macro_calendar
+    role: macro_analysis
+    inputs: [timestamped_macro_releases, economic_calendar]
+    outputs: [macro_view, event_risk]
+    permissions: [read_external_evidence]
+    fail_closed_on_missing_high_impact_calendar: true
+  - id: news_sentiment
+    role: news_analysis
+    inputs: [timestamped_news, source_registry]
+    outputs: [currency_sentiment, source_quality]
+    permissions: [read_external_evidence]
+  - id: regime_cross_asset
+    role: market_regime
+    inputs: [validated_market_snapshot, cross_asset_series]
+    outputs: [regime_view]
+    permissions: [read_validated_market_data]
+  - id: strategy_research
+    role: research
+    inputs: [point_in_time_dataset, strategy_spec]
+    outputs: [research_report]
+    permissions: [read_research_data, write_candidate_artifacts]
+  - id: execution_observer
+    role: broker_observer
+    inputs: [mt5_terminal_info, symbol_specs, bid_ask]
+    outputs: [execution_constraints]
+    permissions: [read_mt5]
+    order_send: false
+  - id: ftmo_risk_controller
+    role: deterministic_risk
+    inputs: [account_profile, market_context, proposed_decision]
+    outputs: [risk_verdict]
+    permissions: [evaluate_policy]
+    fail_closed: true
+  - id: independent_critic
+    role: validation
+    inputs: [agent_outputs, source_evidence, research_report]
+    outputs: [critique]
+    permissions: [read_agent_outputs]
+  - id: master_brain
+    role: orchestration
+    inputs: [fresh_specialist_outputs, risk_verdict]
+    outputs: [auditable_decision]
+    permissions: [fuse_research_outputs]
+    order_send: false
