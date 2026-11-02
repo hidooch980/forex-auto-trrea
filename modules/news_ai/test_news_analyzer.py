@@ -35,3 +35,52 @@ def test_unknown_currency_is_ignored():
     result = analyze_news([{"title": "Strong growth", "currencies": ["ABC"],
                             "published_at": now}], now=now)
     assert not result["available"]
+
+
+
+def test_multilingual_sentiment_baseline():
+    assert score_article("رشد و افزایش تقویت بازار") > 0
+    assert score_article("کاهش و ضعف و بحران") < 0
+    assert score_article("ارتفاع ونمو إيجابي") > 0
+    assert score_article("تراجع وضعف وأزمة") < 0
+    assert score_article("güçlü büyüme ve yükseliş") > 0
+    assert score_article("düşüş ve enflasyon riski") < 0
+
+
+def test_localized_news_article_contract_and_explicit_fallback():
+    from news_schema import article_for_locale, validate_news_article
+
+    article = {
+        "id": "sample-1",
+        "source": "Verified News Desk",
+        "url": "https://example.com/story",
+        "published_at": datetime(2026, 1, 1, tzinfo=timezone.utc),
+        "category": "macro",
+        "impact": "high",
+        "sentiment": "negative",
+        "currencies": ["USD", "XAU"],
+        "title": {"fa": "عنوان فارسی", "en": "English headline"},
+        "summary": {"fa": "خلاصه فارسی", "en": "English summary"},
+        "analysis": {"fa": "تحلیل فارسی", "en": "English analysis"},
+    }
+    normalized = validate_news_article(article)
+    view = article_for_locale(normalized, "tr")
+    assert view["title"] == "English headline"
+    assert view["content_locale"] == "en"
+    assert view["translation_fallback"] is True
+
+
+def test_news_contract_rejects_missing_locale_content():
+    from news_schema import validate_news_article
+
+    article = {
+        "id": "sample-2", "source": "Desk", "url": "https://example.com/story",
+        "published_at": datetime(2026, 1, 1, tzinfo=timezone.utc),
+        "title": {"fa": "عنوان"}, "summary": {"fa": "خلاصه"},
+        "analysis": {},
+    }
+    try:
+        validate_news_article(article)
+        assert False, "missing localized analysis must be rejected"
+    except ValueError:
+        pass
