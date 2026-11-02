@@ -175,3 +175,16 @@ Long and short positions are deliberately aggregated as **gross risk**; opposite
 This is a tested policy component only. It is **not yet connected to live account/position feeds, the Master Brain, broker/exchange order routing or liquidation controls**. It does not place, amend or close orders, and live trading remains disabled. Liquidity-depth inputs must come from a fresh, venue-specific order book; estimates or stale depth must not be treated as executable capacity.
 
 The control center also exposes an authenticated `POST /api/risk/portfolio-preview` endpoint for submitting a caller-provided equity snapshot, current positions and proposed order. It returns the risk decision, limit metrics and block reasons. This endpoint is a preview only: caller-supplied values are not treated as verified live data, the global emergency-stop latch is included, and `execution_allowed` is always false. It does not replace a live broker/exchange adapter or the final execution-side risk gate.
+
+
+## XAUUSD Phantom-inspired four-engine research framework
+
+`modules/xauusd_phantom` adds a deterministic, broker-agnostic research planner inspired by the public ANAKO GOLD PHANTOM feature description. It defines four independent strategy lanes (breakout, pullback, momentum and mean reversion), but applies one shared XAUUSD risk budget before any candidate is accepted. The initial research defaults cap each engine at 0.025% equity risk and all four engines together at 0.10% open stop-risk; these are conservative engineering test defaults, not optimized parameters or a profitability claim.
+
+The planner includes fail-closed checks for stale/future signals, invalid stop/target geometry, reward/risk, spread, market closure, news blackout and emergency stop. It also provides execution-neutral helpers for one-cancels-other pending-order cleanup, ATR trailing-stop tightening and a realized-profit vault split. It does not place orders, fetch news, manage broker tickets, move money, or connect to the MT5 EA. Every decision returns `execution_allowed: false`.
+
+The four strategy names are independent proposal slots, not four completed profitable trading algorithms. Signal generation, broker-specific pending-order lifecycle, persistent vault accounting, economic-calendar integration, MT5 compilation, Strategy Tester validation and demo forward-testing remain separate release gates. Run its tests with:
+
+```bash
+PYTHONPATH=modules/xauusd_phantom python -m pytest -q modules/xauusd_phantom/tests
+```
