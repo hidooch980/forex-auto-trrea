@@ -70,7 +70,7 @@ void PublishSnapshot()
    StringReplace(timeframe, "PERIOD_", "");
 
    string body = "{";
-   body += "\"timestamp\":" + IntegerToString((long)TimeTradeServer()) + ",";
+   body += "\"timestamp\":" + IntegerToString((long)TimeGMT()) + ",";
    body += "\"server_name\":\"" + JsonEscape(AccountInfoString(ACCOUNT_SERVER)) + "\",";
    body += "\"account_mode\":\"" + accountMode + "\",";
    body += "\"currency\":\"" + JsonEscape(AccountInfoString(ACCOUNT_CURRENCY)) + "\",";
