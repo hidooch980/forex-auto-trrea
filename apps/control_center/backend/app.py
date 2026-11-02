@@ -7,6 +7,7 @@ from . import auth
 from .config import AppConfig
 from .engine import choose_regime, choose_strategy, authorize_trade
 from .i18n import catalog_for_frontend, translate
+from modules.ftmo_compliance import account_registry
 
 app = FastAPI(title="Forex AI Hybrid Scalper", version="5.2.0")
 cfg = AppConfig()
@@ -20,6 +21,16 @@ class CreateUserPayload(BaseModel):
     username: str = Field(min_length=3, max_length=64)
     password: str = Field(min_length=14, max_length=256)
     role: str
+
+class FTMOAccountPayload(BaseModel):
+    label: str = Field(min_length=1, max_length=80)
+    account_number: str | None = Field(default=None, max_length=80)
+    product: str
+    phase: str
+    account_type: str
+    platform: str = "mt5"
+    initial_capital: float = Field(gt=0, le=100000000)
+    currency: str = "USD"
 
 def current_session(request: Request):
     session = auth.get_session(request.cookies.get("forex_session"))
@@ -100,6 +111,52 @@ def change_user_active(user_id: int, active: bool, request: Request):
     if not changed:
         raise HTTPException(status_code=404, detail=translate("User not found.", request.headers.get("x-ui-language")))
     return {"ok": True, "user_id": user_id, "active": active}
+
+@app.get("/api/ftmo/products")
+def ftmo_products(request: Request):
+    require_role(request, "admin", "trader", "analyst", "viewer")
+    return {"products": account_registry.PRODUCTS, "platforms": sorted(account_registry.PLATFORMS),
+            "currencies": sorted(account_registry.CURRENCIES)}
+
+@app.get("/api/ftmo/accounts")
+def ftmo_accounts(request: Request):
+    user, _ = current_session(request)
+    return {"accounts": account_registry.list_accounts(user["id"])}
+
+@app.post("/api/ftmo/accounts")
+def add_ftmo_account(payload: FTMOAccountPayload, request: Request):
+    user = require_role(request, "admin", "trader")
+    try:
+        account = account_registry.add_account(user["id"], payload.model_dump())
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        if "UNIQUE constraint failed" in str(exc):
+            raise HTTPException(status_code=409, detail="This account number is already registered.") from exc
+        raise
+    return {"ok": True, "account": account}
+
+@app.put("/api/ftmo/accounts/{account_id}")
+def update_ftmo_account(account_id: int, payload: FTMOAccountPayload, request: Request):
+    user = require_role(request, "admin", "trader")
+    try:
+        account = account_registry.update_account(user["id"], account_id, payload.model_dump())
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        if "UNIQUE constraint failed" in str(exc):
+            raise HTTPException(status_code=409, detail="This account number is already registered.") from exc
+        raise
+    if not account:
+        raise HTTPException(status_code=404, detail="FTMO account not found.")
+    return {"ok": True, "account": account}
+
+@app.patch("/api/ftmo/accounts/{account_id}/active")
+def set_ftmo_account_active(account_id: int, active: bool, request: Request):
+    user = require_role(request, "admin", "trader")
+    if not account_registry.set_account_active(user["id"], account_id, active):
+        raise HTTPException(status_code=404, detail="FTMO account not found.")
+    return {"ok": True, "account_id": account_id, "active": active}
 
 @app.get("/api/status")
 def status(request: Request): 
