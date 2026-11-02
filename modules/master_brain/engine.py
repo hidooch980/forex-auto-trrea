@@ -137,9 +137,10 @@ def _instrument_risk_cap(profile: RiskProfile, symbol: str) -> float:
     ]
     if matching:
         longest = max(len(key) for key, _ in matching)
-        return min(cap for key, cap in matching if len(key) == longest)
+        matched_cap = min(cap for key, cap in matching if len(key) == longest)
+        return min(matched_cap, 0.10) if normalized.startswith("XAU") else matched_cap
     if normalized.startswith("XAU"):
-        return caps.get("XAUUSD", 0.10)
+        return min(caps.get("XAUUSD", 0.10), 0.10)
     return profile.max_risk_per_trade_pct
 
 
