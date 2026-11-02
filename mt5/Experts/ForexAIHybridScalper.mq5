@@ -34,6 +34,12 @@ string g_signal_prefix;
 // FAI.<SYMBOL>.APPROVED     = 1 only when Master Brain approved
 // FAI.GLOBAL.EMERGENCY_STOP = 1 to block new entries
 
+string ConsumedSignalKey()
+{
+   return StringFormat("FAI.%I64d.%s.%I64d.LAST_SIGNAL",
+                       AccountInfoInteger(ACCOUNT_LOGIN), _Symbol, InpMagicNumber);
+}
+
 string DayEquityKey()
 {
    string day = TimeToString(TimeCurrent(), TIME_DATE);
@@ -208,6 +214,10 @@ void OnTick()
    datetime now = TimeCurrent();
    if(signal_time > now || (now - signal_time) > InpMaxSignalAgeSeconds)
       return;
+   double consumed_timestamp = 0.0;
+   if(ReadGV(ConsumedSignalKey(), consumed_timestamp) &&
+      (double)signal_time <= consumed_timestamp)
+      return;
    if(signal_time == g_last_signal_timestamp)
       return;
 
@@ -239,7 +249,10 @@ void OnTick()
 
    if(sent && (trade.ResultRetcode() == TRADE_RETCODE_DONE ||
                trade.ResultRetcode() == TRADE_RETCODE_PLACED))
+   {
       g_last_signal_timestamp = signal_time;
+      GlobalVariableSet(ConsumedSignalKey(), (double)signal_time);
+   }
    else
       PrintFormat("ForexAI order rejected: retcode=%u, %s",
                   trade.ResultRetcode(), trade.ResultRetcodeDescription());
