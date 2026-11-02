@@ -192,6 +192,7 @@ string HmacSha256Hex(const string message, const string secret)
    {
       if(!Sha256(key, key_hash))
          return "";
+      ArrayResize(key, ArraySize(key_hash));
       ArrayCopy(key, key_hash);
    }
    uchar ipad[], opad[];
@@ -224,6 +225,7 @@ string HmacSha256Hex(const string message, const string secret)
    string hex = "";
    for(int j=0; j<ArraySize(digest); j++)
       hex += StringFormat("%02x", (int)digest[j]);
+   StringToLower(hex);
    return hex;
 }
 
@@ -233,7 +235,7 @@ bool ReadBridgeSignal(double &action, double &confidence,
    string normalized_symbol = _Symbol;
    StringToUpper(normalized_symbol);
    string filename = "ForexAI_Bridge\\" + normalized_symbol + ".signal";
-   int handle = FileOpen(filename, FILE_READ|FILE_CSV|FILE_ANSI|FILE_COMMON, '|');
+   int handle = FileOpen(filename, FILE_READ|FILE_CSV|FILE_ANSI|FILE_COMMON|FILE_SHARE_READ|FILE_SHARE_WRITE, '|');
    if(handle == INVALID_HANDLE)
       return false;
 
