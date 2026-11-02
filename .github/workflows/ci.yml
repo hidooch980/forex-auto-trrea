@@ -66,3 +66,5 @@ jobs:
       - name: Control center tests
         working-directory: apps/control_center
         run: PYTHONPATH=. python -m pytest -q tests
+      - name: MT5 web bridge tests
+        run: PYTHONPATH=. python -m pytest -q modules/mt5_web_bridge/tests
