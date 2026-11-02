@@ -107,7 +107,7 @@ def run_ema_backtest(candles: Iterable[BacktestCandle], *, fast_period: int=9,
     wins=sum(t.net_return_pct>0 for t in trades)
     gross_profit=sum(t.net_return_pct for t in trades if t.net_return_pct>0)
     gross_loss=-sum(t.net_return_pct for t in trades if t.net_return_pct<0)
-    pf=(gross_profit/gross_loss) if gross_loss>0 else (None if gross_profit==0 else float("inf"))
+    pf=(gross_profit/gross_loss) if gross_loss>0 else None
     return BacktestResult(len(rows),fast_period,slow_period,initial_equity,equity,
         (equity/initial_equity-1)*100.0,max_dd*100.0,len(trades),
         wins/len(trades)*100.0 if trades else 0.0,pf,tuple(trades),False)
