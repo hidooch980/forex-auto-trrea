@@ -24,6 +24,7 @@ from modules.erp_api.router import build_erp_router, default_ledger_path
 from modules.risk_state_store import PersistentRiskLedger
 from modules.market_radar.api import build_market_radar_router
 from modules.backtest_lab.api import build_backtest_router
+from modules.sltp_engine.api import build_sltp_router
 
 app = FastAPI(title="Forex AI Hybrid Scalper", version="5.2.0")
 cfg = AppConfig()
@@ -129,6 +130,7 @@ ERP_LEDGER = PersistentRiskLedger(default_ledger_path())
 app.include_router(build_erp_router(require_role, ERP_LEDGER))
 app.include_router(build_market_radar_router(require_role))
 app.include_router(build_backtest_router(require_role))
+app.include_router(build_sltp_router(require_role))
 
 
 @app.get("/api/health")
@@ -624,6 +626,7 @@ html[dir=rtl] .nav button:hover{transform:translateX(-3px)}html[dir=ltr] .nav bu
   <button data-page="signals" onclick="goPage('signals',this)"><span class="ico">⌁</span>سیگنال‌ها</button>
   <button data-page="market-radar" onclick="goPage('market-radar',this)"><span class="ico">⌖</span>رادار بازار</button>
   <button data-page="backtest" onclick="goPage('backtest',this)"><span class="ico">▧</span>آزمایشگاه بک‌تست</button>
+  <button data-page="sltp" onclick="goPage('sltp',this)"><span class="ico">⇅</span>مدیریت هوشمند SL/TP</button>
   <button data-page="news" onclick="goPage(&quot;news&quot;,this)"><span class="ico">▤</span>خبرها</button>
   <button data-page="performance" onclick="goPage(&quot;performance&quot;,this)"><span class="ico">▥</span>عملکرد و نبض بازار</button>
   <button data-page="analysis" onclick="goPage('analysis',this)"><span class="ico">◫</span>تحلیل بازار</button>
@@ -673,6 +676,23 @@ html[dir=rtl] .nav button:hover{transform:translateX(-3px)}html[dir=ltr] .nav bu
     <article class="card"><div class="metric-foot">جهت‌گیری پژوهشی</div><div class="metric-value" id="radar-stance">—</div></article>
    </div>
    <div class="notice">خروجی صرفاً تحلیل تکنیکی است، نه توصیه سرمایه‌گذاری یا سیگنال اجرایی. تا زمان اتصال فید معتبر، اعداد را دستی/از منبع خودت وارد کن. اجرای زنده همچنان غیرفعال است.</div>
+  </div>
+ </section>
+ <section id="page-sltp" class="page">
+  <div class="card">
+   <div class="section-head"><h3>محاسبه‌گر هوشمند حدضرر و حدسود</h3><span class="pill">فقط محاسبه · بدون سفارش</span></div>
+   <p class="eyebrow">دادهٔ کندل‌های بسته‌شده و مشخصات واقعی نماد را از MT5 بگیر و در قالب JSON وارد کن. موتور ATR، سقف/کف ساختاری، اسپرد، محدودیت توقف بروکر و حجم مجاز را بررسی می‌کند.</p>
+   <label for="sltp-payload" class="eyebrow">ورودی کامل JSON مطابق نمونهٔ راهنما</label>
+   <textarea id="sltp-payload" class="field" rows="14" style="width:100%;font-family:monospace;direction:ltr;text-align:left" spellcheck="false" placeholder='{"side":"buy","entry":1.1,"equity":10000,"risk_pct":0.25,"reward_risk":1.5,"spread_points":12,"candles":[...],"broker":{"point":0.00001,"tick_size":0.00001,"tick_value_loss":1,"digits":5,"stops_level_points":10,"freeze_level_points":0,"volume_min":0.01,"volume_max":100,"volume_step":0.01}}'></textarea>
+   <div class="actions" style="margin-top:12px"><button class="primary" id="sltp-run" onclick="runSLTP()">محاسبهٔ SL/TP</button><button class="ghost" onclick="document.getElementById('sltp-payload').value=''">پاک‌کردن داده</button></div>
+   <div id="sltp-message" class="status" aria-live="polite">تا زمانی که مشخصات واقعی نماد و دادهٔ معتبر وارد نشود، خروجی تأیید نمی‌شود.</div>
+   <div id="sltp-result" class="grid" style="margin-top:14px" hidden>
+    <article class="card"><div class="metric-foot">Stop Loss</div><div class="metric-value" id="sltp-stop">—</div></article>
+    <article class="card"><div class="metric-foot">Take Profit</div><div class="metric-value" id="sltp-target">—</div></article>
+    <article class="card"><div class="metric-foot">حجم محاسبه‌شده</div><div class="metric-value" id="sltp-volume">—</div></article>
+    <article class="card"><div class="metric-foot">ریسک تخمینی</div><div class="metric-value" id="sltp-risk">—</div></article>
+   </div>
+   <div class="notice">این خروجی پیشنهاد محاسباتی است، نه سفارش و نه تضمین قیمت اجرا. tick value، tick size، اسپرد و قوانین نماد باید از ترمینال متصل و برای همان حساب/نماد تازه گرفته شوند. اجرای زنده خاموش است.</div>
   </div>
  </section>
  <section id="page-backtest" class="page">
@@ -785,13 +805,30 @@ function applyLanguage(locale){activeLocale=["fa","en","ar","tr"].includes(local
  const title=document.getElementById("page-title");if(title&&currentPage)title.textContent=t(pageTitles[currentPage]);const crumb=document.getElementById("crumb");if(crumb&&currentPage)crumb.textContent=t(pageTitles[currentPage]);try{localStorage.setItem("forexai-locale",activeLocale);}catch(e){} }
 function setLanguage(locale){applyLanguage(locale);if(currentUser){document.getElementById("role-label").textContent=t("نقش: ")+t(currentUser.role);refreshStatus();if(currentPage==="news")loadNews();if(currentPage==="performance")loadPerformance();if(currentPage==="users")loadUsers();}}
 let currentPage="overview";
-const pageTitles={performance:"عملکرد و نبض بازار",news:"اخبار بازار",overview:"داشبورد معاملاتی",signals:"سیگنال‌های معاملاتی","market-radar":"رادار بازار",backtest:"آزمایشگاه بک‌تست",analysis:"تحلیل بازار",simulator:"شبیه‌ساز تصمیم",modules:"ماژول‌های هوش مصنوعی",ftmo:"حساب‌های FTMO",users:"مدیریت کاربران"};
+const pageTitles={performance:"عملکرد و نبض بازار",news:"اخبار بازار",overview:"داشبورد معاملاتی",signals:"سیگنال‌های معاملاتی","market-radar":"رادار بازار",backtest:"آزمایشگاه بک‌تست",sltp:"مدیریت هوشمند SL/TP",analysis:"تحلیل بازار",simulator:"شبیه‌ساز تصمیم",modules:"ماژول‌های هوش مصنوعی",ftmo:"حساب‌های FTMO",users:"مدیریت کاربران"};
 let csrfToken='',currentUser=null;
 async function api(path,options={}){const headers=Object.assign({"X-UI-Language":activeLocale},options.headers||{});if(options.method&&options.method!=='GET')headers['X-CSRF-Token']=csrfToken;return fetch(path,Object.assign({credentials:'same-origin'},options,{headers}));}
 async function login(){const msg=document.getElementById('login-message');try{const r=await fetch('/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json','X-UI-Language':activeLocale},body:JSON.stringify({username:document.getElementById('login-user').value,password:document.getElementById('login-pass').value})});const d=await r.json();if(!r.ok)throw Error(t('ورود ناموفق بود')+(d.detail?' · '+d.detail:''));csrfToken=d.csrf_token;document.getElementById('login-pass').value='';showApp(d.user);}catch(e){msg.textContent=e.message;}}
 function showApp(user){currentUser=user;document.getElementById('login-screen').hidden=true;document.getElementById('app-shell').hidden=false;document.getElementById('account-label').textContent=user.username;document.getElementById('role-label').textContent=t('نقش: ')+t(user.role);document.getElementById('avatar').textContent=(user.username||'U').slice(0,1).toUpperCase();document.getElementById('users-nav').hidden=user.role!=='admin';refreshStatus();loadFtmoProducts();loadFtmoAccounts();if(user.role==='admin')loadUsers();}
 async function restoreSession(){try{const r=await fetch('/api/auth/me',{credentials:'same-origin'});if(!r.ok)return;const d=await r.json();csrfToken=d.csrf_token;showApp(d.user);}catch(e){}}
 function goPage(name,button){currentPage=name;if(name==='users'&&(!currentUser||currentUser.role!=='admin'))return;document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));document.getElementById('page-'+name).classList.add('active');document.querySelectorAll('.nav button').forEach(b=>b.classList.remove('active'));if(button)button.classList.add('active');if(name==='news')loadNews();if(name==='performance')loadPerformance();if(name==='ftmo'){loadFtmoProducts();loadFtmoAccounts();}document.getElementById('page-title').textContent=t(pageTitles[name]);document.getElementById('crumb').textContent=t(pageTitles[name]);}
+async function runSLTP(){
+ const msg=document.getElementById('sltp-message'),button=document.getElementById('sltp-run'),out=document.getElementById('sltp-result');
+ out.hidden=true;button.disabled=true;msg.textContent='در حال اعتبارسنجی مشخصات بروکر و محاسبه...';
+ try{
+  const payload=JSON.parse(document.getElementById('sltp-payload').value);
+  const response=await api('/api/sltp/plan',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+  const data=await response.json();if(!response.ok)throw Error(data.detail||'محاسبه انجام نشد.');
+  const p=data.plan;
+  if(!p.valid){msg.textContent='طرح رد شد: '+p.reasons.join('، ');return;}
+  document.getElementById('sltp-stop').textContent=String(p.stop_loss);
+  document.getElementById('sltp-target').textContent=String(p.take_profit);
+  document.getElementById('sltp-volume').textContent=Number(p.volume).toFixed(3);
+  document.getElementById('sltp-risk').textContent=Number(p.estimated_risk_money).toFixed(2);
+  out.hidden=false;msg.textContent='محاسبه معتبر است · ATR '+Number(p.atr).toPrecision(5)+' · R/R '+Number(p.reward_risk).toFixed(2)+' · اجازه اجرا: خیر';
+ }catch(e){msg.textContent='خطا: '+e.message;}
+ finally{button.disabled=false;}
+}
 async function runBacktest(){
  const msg=document.getElementById('bt-message'),button=document.getElementById('bt-run'),out=document.getElementById('bt-result');
  out.hidden=true;button.disabled=true;msg.textContent='در حال اجرای شبیه‌سازی...';

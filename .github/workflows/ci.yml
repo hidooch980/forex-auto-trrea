@@ -61,6 +61,8 @@ jobs:
         run: PYTHONPATH=. python -m pytest -q modules/market_radar/tests
       - name: Backtest lab tests
         run: PYTHONPATH=. python -m pytest -q modules/backtest_lab/tests
+      - name: Adaptive SLTP tests
+        run: PYTHONPATH=. python -m pytest -q modules/sltp_engine/tests modules/mt5_discovery/tests
       - name: Control center tests
         working-directory: apps/control_center
         run: PYTHONPATH=. python -m pytest -q tests
