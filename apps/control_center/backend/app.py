@@ -620,6 +620,7 @@ html[dir=rtl] .nav button:hover{transform:translateX(-3px)}html[dir=ltr] .nav bu
  <nav class="nav">
   <button class="active" data-page="overview" onclick="goPage('overview',this)"><span class="ico">▦</span>نمای کلی</button>
   <button data-page="signals" onclick="goPage('signals',this)"><span class="ico">⌁</span>سیگنال‌ها</button>
+  <button data-page="market-radar" onclick="goPage('market-radar',this)"><span class="ico">⌖</span>رادار بازار</button>
   <button data-page="news" onclick="goPage(&quot;news&quot;,this)"><span class="ico">▤</span>خبرها</button>
   <button data-page="performance" onclick="goPage(&quot;performance&quot;,this)"><span class="ico">▥</span>عملکرد و نبض بازار</button>
   <button data-page="analysis" onclick="goPage('analysis',this)"><span class="ico">◫</span>تحلیل بازار</button>
@@ -649,6 +650,27 @@ html[dir=rtl] .nav button:hover{transform:translateX(-3px)}html[dir=ltr] .nav bu
    <article class="card"><div class="section-head"><h3>وضعیت سیستم</h3><span class="pill ok">محیط امن</span></div><div class="signal"><div class="pair"><div class="coin">AI</div><div><b>موتور تحلیل</b><small>قابل استفاده در حالت آزمایشی</small></div></div><span class="pill ok">آماده</span></div><div class="signal"><div class="pair"><div class="coin">N</div><div><b>فیلتر اخبار</b><small>منبع زنده متصل نیست</small></div></div><span class="pill">محدود</span></div><div class="signal"><div class="pair"><div class="coin">MT</div><div><b>اتصال MT5</b><small>اتصال برقرار نشده</small></div></div><span class="pill">قطع</span></div><div class="signal"><div class="pair"><div class="coin">EX</div><div><b>اجرای سفارش</b><small>در این نسخه خاموش است</small></div></div><span class="pill">غیرفعال</span></div><div id="status" class="status">در حال دریافت وضعیت...</div></article>
   </div>
   <div class="card" style="margin-top:14px"><div class="section-head"><h3>کنترل اضطراری</h3><small>دسترسی محدود به مدیر و معامله‌گر</small></div><div class="actions"><button id="stop" class="danger" onclick="activateStop()">فعال‌سازی توقف اضطراری</button><button class="ghost" onclick="refreshStatus()">به‌روزرسانی وضعیت</button></div><div id="toast" class="status"></div></div>
+ </section>
+ <section id="page-market-radar" class="page">
+  <div class="card">
+   <div class="section-head"><h3>رادار بازار · تحلیل کندل‌های واردشده</h3><span class="pill">تحقیقاتی · بدون اجرای سفارش</span></div>
+   <p class="eyebrow">۳۰ تا ۱۰۰۰ کندل تکمیل‌شده را از منبع معتبر خود وارد کن. این بخش خودش قیمت زنده دریافت نمی‌کند و کامل‌بودن کندل‌ها را باید منبع داده تضمین کند.</p>
+   <div class="actions">
+    <input id="radar-symbol" class="field" value="EURUSD" maxlength="32" aria-label="نماد" placeholder="نماد مانند EURUSD">
+    <input id="radar-timeframe" class="field" value="M15" maxlength="16" aria-label="تایم‌فریم" placeholder="تایم‌فریم مانند M15">
+   </div>
+   <label for="radar-candles" class="eyebrow">دادهٔ کندل‌ها در قالب JSON (هر کندل: timestamp, open, high, low, close, volume)</label>
+   <textarea id="radar-candles" class="field" rows="9" style="width:100%;font-family:monospace;direction:ltr;text-align:left" spellcheck="false" placeholder='[{"timestamp":"2026-11-02T10:00:00Z","open":1.1,"high":1.101,"low":1.099,"close":1.1005,"volume":120}]'></textarea>
+   <div class="actions" style="margin-top:12px"><button class="primary" id="radar-run" onclick="runMarketRadar()">تحلیل کندل‌ها</button><button class="ghost" onclick="document.getElementById('radar-candles').value=''">پاک‌کردن داده</button></div>
+   <div id="radar-message" class="status" aria-live="polite">برای تحلیل، دادهٔ واقعی و تکمیل‌شده وارد کن.</div>
+   <div id="radar-result" class="grid" style="margin-top:14px" hidden>
+    <article class="card"><div class="metric-foot">روند</div><div class="metric-value" id="radar-trend">—</div></article>
+    <article class="card"><div class="metric-foot">مومنتوم RSI 14</div><div class="metric-value" id="radar-rsi">—</div></article>
+    <article class="card"><div class="metric-foot">نوسان ATR ٪</div><div class="metric-value" id="radar-atr">—</div></article>
+    <article class="card"><div class="metric-foot">جهت‌گیری پژوهشی</div><div class="metric-value" id="radar-stance">—</div></article>
+   </div>
+   <div class="notice">خروجی صرفاً تحلیل تکنیکی است، نه توصیه سرمایه‌گذاری یا سیگنال اجرایی. تا زمان اتصال فید معتبر، اعداد را دستی/از منبع خودت وارد کن. اجرای زنده همچنان غیرفعال است.</div>
+  </div>
  </section>
  <section id="page-signals" class="page"><div class="card"><div class="section-head"><h3>سیگنال‌های معاملاتی</h3><span class="pill">اتصال زنده موجود نیست</span></div><p class="eyebrow">پس از اتصال منبع داده و موتور تولید سیگنال، نقاط ورود، حد ضرر، اهداف سود و نسبت ریسک به بازده در این بخش نمایش داده می‌شوند.</p><div class="signal"><div class="pair"><div class="coin">Au</div><div><b>XAUUSD · طلا</b><small>نمونه نمایشی، نه سیگنال واقعی</small></div></div><span class="pill">بدون سیگنال زنده</span></div><div class="signal"><div class="pair"><div class="coin">€</div><div><b>EURUSD</b><small>منتظر اتصال بازار</small></div></div><span class="pill">بدون سیگنال زنده</span></div></div></section>
  <section id="page-news" class="page">
@@ -737,13 +759,31 @@ function applyLanguage(locale){activeLocale=["fa","en","ar","tr"].includes(local
  const title=document.getElementById("page-title");if(title&&currentPage)title.textContent=t(pageTitles[currentPage]);const crumb=document.getElementById("crumb");if(crumb&&currentPage)crumb.textContent=t(pageTitles[currentPage]);try{localStorage.setItem("forexai-locale",activeLocale);}catch(e){} }
 function setLanguage(locale){applyLanguage(locale);if(currentUser){document.getElementById("role-label").textContent=t("نقش: ")+t(currentUser.role);refreshStatus();if(currentPage==="news")loadNews();if(currentPage==="performance")loadPerformance();if(currentPage==="users")loadUsers();}}
 let currentPage="overview";
-const pageTitles={performance:"عملکرد و نبض بازار",news:"اخبار بازار",overview:"داشبورد معاملاتی",signals:"سیگنال‌های معاملاتی",analysis:"تحلیل بازار",simulator:"شبیه‌ساز تصمیم",modules:"ماژول‌های هوش مصنوعی",ftmo:"حساب‌های FTMO",users:"مدیریت کاربران"};
+const pageTitles={performance:"عملکرد و نبض بازار",news:"اخبار بازار",overview:"داشبورد معاملاتی",signals:"سیگنال‌های معاملاتی","market-radar":"رادار بازار",analysis:"تحلیل بازار",simulator:"شبیه‌ساز تصمیم",modules:"ماژول‌های هوش مصنوعی",ftmo:"حساب‌های FTMO",users:"مدیریت کاربران"};
 let csrfToken='',currentUser=null;
 async function api(path,options={}){const headers=Object.assign({"X-UI-Language":activeLocale},options.headers||{});if(options.method&&options.method!=='GET')headers['X-CSRF-Token']=csrfToken;return fetch(path,Object.assign({credentials:'same-origin'},options,{headers}));}
 async function login(){const msg=document.getElementById('login-message');try{const r=await fetch('/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json','X-UI-Language':activeLocale},body:JSON.stringify({username:document.getElementById('login-user').value,password:document.getElementById('login-pass').value})});const d=await r.json();if(!r.ok)throw Error(t('ورود ناموفق بود')+(d.detail?' · '+d.detail:''));csrfToken=d.csrf_token;document.getElementById('login-pass').value='';showApp(d.user);}catch(e){msg.textContent=e.message;}}
 function showApp(user){currentUser=user;document.getElementById('login-screen').hidden=true;document.getElementById('app-shell').hidden=false;document.getElementById('account-label').textContent=user.username;document.getElementById('role-label').textContent=t('نقش: ')+t(user.role);document.getElementById('avatar').textContent=(user.username||'U').slice(0,1).toUpperCase();document.getElementById('users-nav').hidden=user.role!=='admin';refreshStatus();loadFtmoProducts();loadFtmoAccounts();if(user.role==='admin')loadUsers();}
 async function restoreSession(){try{const r=await fetch('/api/auth/me',{credentials:'same-origin'});if(!r.ok)return;const d=await r.json();csrfToken=d.csrf_token;showApp(d.user);}catch(e){}}
 function goPage(name,button){currentPage=name;if(name==='users'&&(!currentUser||currentUser.role!=='admin'))return;document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));document.getElementById('page-'+name).classList.add('active');document.querySelectorAll('.nav button').forEach(b=>b.classList.remove('active'));if(button)button.classList.add('active');if(name==='news')loadNews();if(name==='performance')loadPerformance();if(name==='ftmo'){loadFtmoProducts();loadFtmoAccounts();}document.getElementById('page-title').textContent=t(pageTitles[name]);document.getElementById('crumb').textContent=t(pageTitles[name]);}
+async function runMarketRadar(){
+ const msg=document.getElementById('radar-message'),button=document.getElementById('radar-run'),out=document.getElementById('radar-result');
+ out.hidden=true;button.disabled=true;msg.textContent='در حال اعتبارسنجی و تحلیل داده‌ها...';
+ try{
+  const raw=JSON.parse(document.getElementById('radar-candles').value);
+  if(!Array.isArray(raw))throw Error('ورودی باید آرایه‌ای از کندل‌ها باشد.');
+  const payload={symbol:document.getElementById('radar-symbol').value.trim(),timeframe:document.getElementById('radar-timeframe').value.trim(),candles:raw};
+  const response=await api('/api/market-radar/analyze',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+  const data=await response.json();if(!response.ok)throw Error(data.detail||'تحلیل انجام نشد.');
+  const a=data.analysis;
+  document.getElementById('radar-trend').textContent=t(a.trend);
+  document.getElementById('radar-rsi').textContent=Number(a.rsi_14).toFixed(2)+' · '+t(a.momentum);
+  document.getElementById('radar-atr').textContent=Number(a.atr_pct).toFixed(3)+'% · '+t(a.volatility);
+  document.getElementById('radar-stance').textContent=t(a.stance);
+  out.hidden=false;msg.textContent='تحلیل انجام شد · '+a.bars+' کندل · آخرین قیمت '+a.latest_close+' · اجازه اجرای سفارش: خیر';
+ }catch(e){msg.textContent='خطا: '+e.message;}
+ finally{button.disabled=false;}
+}
 function toggleTheme(){document.documentElement.classList.toggle('light');}
 async function logout(){try{await api('/api/auth/logout',{method:'POST'});}finally{csrfToken='';location.reload();}}
 let brokerSearchTimer=null;
