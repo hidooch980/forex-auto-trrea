@@ -302,3 +302,41 @@ def test_trading_behavior_api_flags_revenge_and_fomo_proxies(tmp_path):
     assert "possible_fomo_or_late_entry" in result["behavior_flags"]
     assert result["emotion_diagnosis"] is False
     assert result["execution_allowed"] is False
+
+
+def test_erp_emergency_stop_is_persistent_and_admin_controlled(tmp_path):
+    from fastapi import HTTPException
+    from modules.erp_api.router import UnlockPayload
+
+    router, ledger, calls = _router(tmp_path)
+    request = SimpleNamespace()
+    stop = _endpoint(router, "/api/erp/risk/emergency-stop", "POST")
+    result = stop(UnlockPayload(lock_name="emergency_stop", reason="operator emergency stop"), request)
+    assert result["risk"]["emergency_stop"] is True
+    assert result["execution_allowed"] is False
+    assert PersistentRiskLedger(ledger.db_path).snapshot().emergency_stop is True
+
+    unlock = _endpoint(router, "/api/erp/risk/unlock", "POST")
+    cleared = unlock(UnlockPayload(lock_name="emergency_stop", reason="incident reviewed"), request)
+    assert cleared["risk"]["emergency_stop"] is False
+    assert calls[-1] == ("admin",)
+
+
+def test_behavior_guard_uses_requested_risk_not_only_brain_default(tmp_path):
+    from modules.erp_api.router import TradingBehaviorPayload
+
+    router, _, _ = _router(tmp_path)
+    payload = TradingBehaviorPayload(
+        daily_loss_pct=0, weekly_loss_pct=0, peak_drawdown_pct=0,
+        trades_today=0, consecutive_losses=0, emergency_stop=False,
+        trades_last_hour=0, minutes_since_last_loss=120,
+        risk_vs_recent_average=1, volume_multiplier_after_loss=1,
+        signal_age_seconds=10, proposed_risk_pct=0.5, reward_risk=2,
+        has_stop_loss=True, market_data_valid=True, calendar_clear=True,
+        spread_acceptable=True,
+    )
+    result = _endpoint(router, "/api/erp/cognition/trading-behavior", "POST")(
+        payload, SimpleNamespace(headers={})
+    )
+    assert result["approved"] is False
+    assert "per_trade_risk_limit_exceeded" in result["reasons"]
