@@ -82,19 +82,27 @@ def evaluate_account(profile: str, phase: str, snapshot: Mapping) -> dict:
     consistency = None
     limit = rules["consistency_pct"]
     if limit is not None:
+        rule_kind = snapshot.get("consistency_rule", "consistency")
+        if profile == "1_step" and rule_kind not in {"consistency", "best_day"}:
+            raise ValueError("1-Step consistency_rule must be consistency or best_day")
+        if profile == "instant" and rule_kind != "consistency":
+            raise ValueError("Instant account uses the Consistency rule")
         best_day = float(snapshot.get("best_day_profit", 0.0))
         total_profit = float(snapshot.get("total_closed_profit", 0.0))
-        if not isfinite(best_day) or not isfinite(total_profit):
+        denominator = total_profit
+        if profile == "1_step" and rule_kind == "best_day":
+            denominator = float(snapshot.get("positive_days_profit", 0.0))
+        if not all(isfinite(v) for v in (best_day, total_profit, denominator)):
             raise ValueError("consistency values must be finite")
-        if total_profit > 0 and best_day > total_profit * limit / 100.0:
+        if denominator > 0 and best_day > denominator * limit / 100.0:
             consistency = {
-                "satisfied": False, "best_day_profit": best_day,
-                "total_profit": total_profit, "maximum_share_pct": limit,
+                "satisfied": False, "rule": rule_kind, "best_day_profit": best_day,
+                "comparison_profit": denominator, "maximum_share_pct": limit,
             }
         else:
             consistency = {
-                "satisfied": True, "best_day_profit": best_day,
-                "total_profit": total_profit, "maximum_share_pct": limit,
+                "satisfied": True, "rule": rule_kind, "best_day_profit": best_day,
+                "comparison_profit": denominator, "maximum_share_pct": limit,
             }
 
     min_days = rules["minimum_trading_days"] if profile == "2_step" and phase in {"challenge", "verification"} else 0
