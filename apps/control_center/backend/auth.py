@@ -160,9 +160,27 @@ def add_user(username: str, password: str, role: str) -> dict[str, Any]:
     return {"id": user_id, "username": username, "role": role, "active": True}
 
 
-def set_user_active(user_id: int, active: bool) -> bool:
+def set_user_active(
+    user_id: int, active: bool, actor_user_id: int | None = None
+) -> bool:
+    """Change account status without allowing self-lockout or last-admin removal."""
     with _connect() as db:
-        cur = db.execute("UPDATE users SET active = ? WHERE id = ?", (int(active), user_id))
-        if cur.rowcount:
-            db.execute("DELETE FROM sessions WHERE user_id = ?", (user_id,)) if not active else None
-        return cur.rowcount > 0
+        db.execute("BEGIN IMMEDIATE")
+        target = db.execute(
+            "SELECT id, role, active FROM users WHERE id = ?", (user_id,)
+        ).fetchone()
+        if target is None:
+            return False
+        if not active:
+            if actor_user_id is not None and actor_user_id == user_id:
+                raise ValueError("Administrators cannot deactivate their own account.")
+            if target["role"] == "admin" and target["active"]:
+                active_admins = db.execute(
+                    "SELECT COUNT(*) FROM users WHERE role = 'admin' AND active = 1"
+                ).fetchone()[0]
+                if active_admins <= 1:
+                    raise ValueError("The last active administrator cannot be deactivated.")
+        db.execute("UPDATE users SET active = ? WHERE id = ?", (int(active), user_id))
+        if not active:
+            db.execute("DELETE FROM sessions WHERE user_id = ?", (user_id,))
+        return True
