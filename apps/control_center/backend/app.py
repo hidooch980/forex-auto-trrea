@@ -1,10 +1,12 @@
 import os
+import json
 from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field
 from . import auth
 from .config import AppConfig
 from .engine import choose_regime, choose_strategy, authorize_trade
+from .i18n import catalog_for_frontend
 
 app = FastAPI(title="Forex AI Hybrid Scalper", version="5.2.0")
 cfg = AppConfig()
@@ -176,9 +178,9 @@ HTML = r"""
 :root.light{color-scheme:light;--bg:#f3f6fb;--panel:#fff;--panel2:#f7f9fd;--line:#e3e9f2;--text:#172238;--muted:#687790;--green:#079b70;--red:#dc4658;--gold:#a87820;--blue:#496bd4;--shadow:0 14px 40px #25385812}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:14px/1.7 Vazirmatn,Tahoma,system-ui,sans-serif;transition:background .2s,color .2s}
 button,input,select{font:inherit}button{cursor:pointer}.shell{min-height:100vh;display:grid;grid-template-columns:250px minmax(0,1fr)}
-.sidebar{background:var(--panel);border-left:1px solid var(--line);padding:24px 16px;display:flex;flex-direction:column;gap:24px;position:sticky;top:0;height:100vh}
+.sidebar{background:var(--panel);border-inline-end:1px solid var(--line);padding:24px 16px;display:flex;flex-direction:column;gap:24px;position:sticky;top:0;height:100vh}
 .brand{display:flex;align-items:center;gap:11px;padding:0 8px}.logo{width:39px;height:39px;border-radius:13px;background:linear-gradient(135deg,#39d6a2,#4d83e8);display:grid;place-items:center;color:#071522;font-weight:1000;font-size:19px}.brand strong{font-size:16px;letter-spacing:.2px}.brand small{display:block;color:var(--muted);font-size:10px;direction:ltr;text-align:right}
-.nav-title{font-size:10px;color:var(--muted);padding:0 12px;margin-bottom:-14px}.nav{display:grid;gap:5px}.nav button{display:flex;align-items:center;gap:12px;text-align:right;color:var(--muted);background:transparent;border:1px solid transparent;padding:11px 13px;border-radius:11px}.nav button.active,.nav button:hover{background:var(--panel2);border-color:var(--line);color:var(--text)}.nav .ico{width:21px;text-align:center;font-size:16px}
+.nav-title{font-size:10px;color:var(--muted);padding:0 12px;margin-bottom:-14px}.nav{display:grid;gap:5px}.nav button{display:flex;align-items:center;gap:12px;text-align:start;color:var(--muted);background:transparent;border:1px solid transparent;padding:11px 13px;border-radius:11px}.nav button.active,.nav button:hover{background:var(--panel2);border-color:var(--line);color:var(--text)}.nav .ico{width:21px;text-align:center;font-size:16px}
 .side-bottom{margin-top:auto}.safe{padding:13px;border:1px solid #269b7950;background:#159b7010;border-radius:13px;color:var(--green);font-size:12px}.safe b{display:block;font-size:13px;margin-bottom:3px}
 main{min-width:0;padding:25px clamp(14px,3vw,38px) 42px;max-width:1600px;width:100%;margin:auto}
 .topbar{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:23px}.eyebrow{color:var(--muted);font-size:12px}.heading{font-size:24px;font-weight:850;margin:2px 0}.top-actions{display:flex;align-items:center;gap:9px}.icon-btn,.ghost{border:1px solid var(--line);background:var(--panel);color:var(--text);border-radius:11px;padding:9px 12px}.user-chip{display:flex;align-items:center;gap:9px;border:1px solid var(--line);background:var(--panel);padding:6px 11px;border-radius:12px}.avatar{width:30px;height:30px;border-radius:10px;background:#243d5a;color:#a9c7ff;display:grid;place-items:center;font-weight:800}
@@ -219,7 +221,7 @@ body{
 .logo{background:linear-gradient(135deg,#48f0c1 0%,#55a6ff 52%,#a77bff 100%);box-shadow:0 0 25px #4bdcbe55,0 0 42px #8871ff22;}
 .brand strong{background:linear-gradient(90deg,#59e8c4,#9aabff);-webkit-background-clip:text;background-clip:text;color:transparent;}
 .nav button{transition:background .2s,border-color .2s,transform .2s,color .2s}
-.nav button:hover{transform:translateX(-3px)}
+html[dir=rtl] .nav button:hover{transform:translateX(-3px)}html[dir=ltr] .nav button:hover{transform:translateX(3px)}
 .nav button.active{background:linear-gradient(100deg,#36dcb21d,#7b75ef20);border-color:#50d8c35c;box-shadow:inset -3px 0 #54e2c0;color:var(--text)}
 .hero{
  background:linear-gradient(112deg,#102c3b 0%,#19264a 48%,#39265a 100%);
@@ -274,7 +276,7 @@ body{
 </aside>
 <main>
  <header class="topbar"><div><div class="eyebrow">مرکز کنترل / <span id="crumb">نمای کلی</span></div><div class="heading" id="page-title">داشبورد معاملاتی</div></div>
- <div class="top-actions"><button class="icon-btn" onclick="toggleTheme()" title="تغییر پوسته">◐</button><div class="user-chip"><div class="avatar" id="avatar">U</div><div><b id="account-label">کاربر</b><div class="eyebrow" id="role-label">عضو</div></div></div><button class="ghost" onclick="logout()">خروج</button></div></header>
+ <div class="top-actions"><select id="language-select" class="field" aria-label="Language" onchange="setLanguage(this.value)"><option value="fa">فارسی</option><option value="en">English</option><option value="ar">العربية</option><option value="tr">Türkçe</option></select><button class="icon-btn" onclick="toggleTheme()" title="تغییر پوسته">◐</button><div class="user-chip"><div class="avatar" id="avatar">U</div><div><b id="account-label">کاربر</b><div class="eyebrow" id="role-label">عضو</div></div></div><button class="ghost" onclick="logout()">خروج</button></div></header>
  <div class="market-strip"><div class="ticker"><small>EUR / USD</small><b>—</b><em>داده زنده متصل نیست</em></div><div class="ticker"><small>GBP / USD</small><b>—</b><em>داده زنده متصل نیست</em></div><div class="ticker"><small>USD / JPY</small><b>—</b><em>داده زنده متصل نیست</em></div><div class="ticker"><small>GOLD / XAU</small><b>—</b><em>داده زنده متصل نیست</em></div></div>
  <section id="page-overview" class="page active">
   <div class="hero"><div><h2>تصمیم‌گیری هوشمند، با کنترل کامل ریسک</h2><p>تحلیل چندلایه بازار و مدیریت سرمایه در یک فضای کاری یکپارچه</p></div><span class="hero-tag">● محیط آزمایشی · بدون اجرای سفارش</span></div>
@@ -300,22 +302,33 @@ body{
  <footer>Forex AI Hybrid Scalper · ابزار تحلیلی و آموزشی. داده زنده، تقویم اقتصادی معتبر، اتصال بروکر و ارسال سفارش در این نسخه فعال نیست. نمودارها و مقادیر نمونه صرفاً برای نمایش رابط کاربری هستند. معامله‌گری ریسک بالایی دارد.</footer>
 </main></div>
 <script>
+const I18N = __I18N_CATALOG__;
+let activeLocale = "fa";
+function t(source){if(activeLocale==="fa")return source;return (I18N[source]&&I18N[source][activeLocale])||source;}
+function applyLanguage(locale){activeLocale=["fa","en","ar","tr"].includes(locale)?locale:"fa";const rtl=["fa","ar"].includes(activeLocale);document.documentElement.lang=activeLocale;document.documentElement.dir=rtl?"rtl":"ltr";const select=document.getElementById("language-select");if(select)select.value=activeLocale;const walker=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);let node;while(node=walker.nextNode()){if(!node.parentElement||["SCRIPT","STYLE"].includes(node.parentElement.tagName))continue;if(!node.parentElement.dataset.i18nOriginal)node.parentElement.dataset.i18nOriginal="1";if(!node.parentElement.dataset.i18nText)node.parentElement.dataset.i18nText=node.nodeValue;const original=node.parentElement.dataset.i18nText;const trimmed=original.trim();if(!trimmed)continue;const translated=t(trimmed);node.nodeValue=original.replace(trimmed,translated);}
+ document.querySelectorAll("[placeholder],[title],[aria-label]").forEach(el=>{for(const attr of ["placeholder","title","aria-label"]){if(!el.hasAttribute(attr))continue;const key="i18n"+attr[0].toUpperCase()+attr.slice(1);if(!el.dataset[key])el.dataset[key]=el.getAttribute(attr);el.setAttribute(attr,t(el.dataset[key]));}});
+ const title=document.getElementById("page-title");if(title&&currentPage)title.textContent=t(pageTitles[currentPage]);const crumb=document.getElementById("crumb");if(crumb&&currentPage)crumb.textContent=t(pageTitles[currentPage]);try{localStorage.setItem("forexai-locale",activeLocale);}catch(e){} }
+function setLanguage(locale){applyLanguage(locale);if(currentUser){document.getElementById("role-label").textContent=t("نقش: ")+t(currentUser.role);refreshStatus();}}
+let currentPage="overview";
+const pageTitles={overview:"داشبورد معاملاتی",signals:"سیگنال‌های معاملاتی",analysis:"تحلیل بازار",simulator:"شبیه‌ساز تصمیم",modules:"ماژول‌های هوش مصنوعی",users:"مدیریت کاربران"};
 let csrfToken='',currentUser=null;
-const titles={overview:'داشبورد معاملاتی',signals:'سیگنال‌های معاملاتی',analysis:'تحلیل بازار',simulator:'شبیه‌ساز معاملات',modules:'ماژول‌های هوش مصنوعی',users:'مدیریت کاربران'};
 async function api(path,options={}){const headers=Object.assign({},options.headers||{});if(options.method&&options.method!=='GET')headers['X-CSRF-Token']=csrfToken;return fetch(path,Object.assign({credentials:'same-origin'},options,{headers}));}
-async function login(){const msg=document.getElementById('login-message');try{const r=await fetch('/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:document.getElementById('login-user').value,password:document.getElementById('login-pass').value})});const d=await r.json();if(!r.ok)throw Error(d.detail||'ورود ناموفق بود');csrfToken=d.csrf_token;document.getElementById('login-pass').value='';showApp(d.user);}catch(e){msg.textContent=e.message;}}
-function showApp(user){currentUser=user;document.getElementById('login-screen').hidden=true;document.getElementById('app-shell').hidden=false;document.getElementById('account-label').textContent=user.username;document.getElementById('role-label').textContent='نقش: '+user.role;document.getElementById('avatar').textContent=(user.username||'U').slice(0,1).toUpperCase();document.getElementById('users-nav').hidden=user.role!=='admin';refreshStatus();if(user.role==='admin')loadUsers();}
+async function login(){const msg=document.getElementById('login-message');try{const r=await fetch('/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:document.getElementById('login-user').value,password:document.getElementById('login-pass').value})});const d=await r.json();if(!r.ok)throw Error(t('ورود ناموفق بود')+(d.detail?' · '+d.detail:''));csrfToken=d.csrf_token;document.getElementById('login-pass').value='';showApp(d.user);}catch(e){msg.textContent=e.message;}}
+function showApp(user){currentUser=user;document.getElementById('login-screen').hidden=true;document.getElementById('app-shell').hidden=false;document.getElementById('account-label').textContent=user.username;document.getElementById('role-label').textContent=t('نقش: ')+t(user.role);document.getElementById('avatar').textContent=(user.username||'U').slice(0,1).toUpperCase();document.getElementById('users-nav').hidden=user.role!=='admin';refreshStatus();if(user.role==='admin')loadUsers();}
 async function restoreSession(){try{const r=await fetch('/api/auth/me',{credentials:'same-origin'});if(!r.ok)return;const d=await r.json();csrfToken=d.csrf_token;showApp(d.user);}catch(e){}}
-function goPage(name,button){if(name==='users'&&(!currentUser||currentUser.role!=='admin'))return;document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));document.getElementById('page-'+name).classList.add('active');document.querySelectorAll('.nav button').forEach(b=>b.classList.remove('active'));if(button)button.classList.add('active');document.getElementById('page-title').textContent=titles[name];document.getElementById('crumb').textContent=titles[name];}
+function goPage(name,button){currentPage=name;if(name==='users'&&(!currentUser||currentUser.role!=='admin'))return;document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));document.getElementById('page-'+name).classList.add('active');document.querySelectorAll('.nav button').forEach(b=>b.classList.remove('active'));if(button)button.classList.add('active');document.getElementById('page-title').textContent=t(pageTitles[name]);document.getElementById('crumb').textContent=t(pageTitles[name]);}
 function toggleTheme(){document.documentElement.classList.toggle('light');}
 async function logout(){try{await api('/api/auth/logout',{method:'POST'});}finally{csrfToken='';location.reload();}}
 async function loadUsers(){const el=document.getElementById('users-list');try{const r=await fetch('/api/users');const d=await r.json();if(!r.ok)throw Error(d.detail||'خطا');el.replaceChildren();d.users.forEach(u=>{const row=document.createElement('div');row.className='user-row';const label=document.createElement('span');label.textContent=u.username+' · '+u.role+' · '+(u.active?'فعال':'غیرفعال');row.appendChild(label);if(u.role!=='admin'){const b=document.createElement('button');b.className='ghost';b.textContent=u.active?'غیرفعال‌کردن':'فعال‌کردن';b.onclick=()=>setUserActive(u.id,!u.active);row.appendChild(b);}el.appendChild(row);});}catch(e){el.textContent=e.message;}}
 async function createUser(){try{const r=await api('/api/users',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:document.getElementById('new-username').value,password:document.getElementById('new-password').value,role:document.getElementById('new-role').value})});const d=await r.json();if(!r.ok)throw Error(d.detail||'خطا');document.getElementById('new-password').value='';await loadUsers();}catch(e){document.getElementById('users-list').textContent=e.message;}}
 async function setUserActive(id,active){try{const r=await api('/api/users/'+id+'/active?active='+active,{method:'PATCH'});const d=await r.json();if(!r.ok)throw Error(d.detail||'خطا');await loadUsers();}catch(e){document.getElementById('users-list').textContent=e.message;}}
-async function refreshStatus(){const el=document.getElementById('status');try{const r=await fetch('/api/status');if(!r.ok)throw Error('HTTP '+r.status);const d=await r.json();el.textContent='توقف اضطراری: '+(d.emergency_stop?'فعال':'غیرفعال')+' · فیلتر خبر: '+(d.news_filter_enabled?'روشن':'خاموش')+' · MT5: متصل نیست · اجرای واقعی: غیرفعال';}catch(e){el.textContent='وضعیت سرویس دریافت نشد: '+e.message;}}
-async function activateStop(){const b=document.getElementById('stop'),t=document.getElementById('toast');b.disabled=true;try{const r=await api('/api/emergency-stop',{method:'POST'});if(!r.ok)throw Error('HTTP '+r.status);t.textContent='قفل توقف اضطراری فعال شد.';await refreshStatus();}catch(e){t.textContent='خطا: '+e.message;}finally{b.disabled=false;}}
-async function preview(){const s=document.getElementById('symbol').value,el=document.getElementById('preview');try{const r=await fetch('/api/decision-preview?symbol='+encodeURIComponent(s));const d=await r.json();if(!r.ok)throw Error(d.detail||'خطا');el.textContent=s+' · رژیم: '+d.regime+' · استراتژی: '+d.strategy+' · مجوز اجرا: خیر · '+d.guard_reason+' · پیش‌نمایش غیرزنده';}catch(e){el.textContent='پیش‌نمایش در دسترس نیست: '+e.message;}}
+async function refreshStatus(){const el=document.getElementById('status');try{const r=await fetch('/api/status');if(!r.ok)throw Error('HTTP '+r.status);const d=await r.json();el.textContent=t('توقف اضطراری: ')+(d.emergency_stop?t('فعال'):t('غیرفعال'))+' · '+t('فیلتر خبر: ')+(d.news_filter_enabled?t('روشن'):t('خاموش'))+' · MT5: '+t('متصل نیست')+' · '+t('اجرای واقعی: غیرفعال');}catch(e){el.textContent='وضعیت سرویس دریافت نشد: '+e.message;}}
+async function activateStop(){const b=document.getElementById('stop'),t=document.getElementById('toast');b.disabled=true;try{const r=await api('/api/emergency-stop',{method:'POST'});if(!r.ok)throw Error('HTTP '+r.status);t.textContent=t('قفل توقف اضطراری فعال شد.');await refreshStatus();}catch(e){t.textContent=t('خطا: ')+e.message;}finally{b.disabled=false;}}
+async function preview(){const s=document.getElementById('symbol').value,el=document.getElementById('preview');try{const r=await fetch('/api/decision-preview?symbol='+encodeURIComponent(s));const d=await r.json();if(!r.ok)throw Error(d.detail||'خطا');el.textContent=s+' · '+t('رژیم: ')+d.regime+' · '+t('استراتژی: ')+d.strategy+' · '+t('مجوز اجرا: خیر')+' · '+d.guard_reason+' · '+t('پیش‌نمایش غیرزنده');}catch(e){el.textContent='پیش‌نمایش در دسترس نیست: '+e.message;}}
+try{applyLanguage(localStorage.getItem('forexai-locale')||'fa');}catch(e){applyLanguage('fa');}
 restoreSession();
 </script>
 </body></html>
 """
+
+HTML = HTML.replace("__I18N_CATALOG__", json.dumps(catalog_for_frontend(), ensure_ascii=False))
