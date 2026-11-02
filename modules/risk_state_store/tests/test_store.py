@@ -34,11 +34,12 @@ def test_duplicate_ids_and_invalid_transitions_fail(tmp_path):
     ledger.reserve("a", "breakout", .02, now=1)
     with pytest.raises(RiskStateError, match="duplicate_reservation_id"):
         ledger.reserve("a", "pullback", .01, now=2)
+    ledger.transition("a", "OPEN", now=2)
     with pytest.raises(RiskStateError, match="invalid_transition"):
-        ledger.transition("a", "OPEN", now=2)
-    ledger.transition("a", "CANCELLED", now=3)
+        ledger.transition("a", "CANCELLED", now=3)
+    ledger.transition("a", "CLOSED", now=4)
     with pytest.raises(RiskStateError, match="invalid_transition"):
-        ledger.transition("a", "OPEN", now=4)
+        ledger.transition("a", "OPEN", now=5)
 
 
 def test_daily_loss_and_peak_drawdown_locks_persist(tmp_path):
