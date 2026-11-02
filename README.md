@@ -236,3 +236,13 @@ New API contracts:
 The pipeline database is durable SQLite (WAL + FULL synchronous). Configure `ERP_PIPELINE_DB`, or use `ERP_DATA_DIR/erp_pipeline.sqlite3`. Invalid or stale evidence is quarantined and never auto-corrected. Retry is not permitted for schema, timestamp, provenance or data-quality failures. Internal exceptions are logged by type, without echoing sensitive payloads into the error message.
 
 Safety boundary: the API accepts caller-supplied bars and agent evidence; it does not itself connect to a verified market-data vendor, news calendar or MT5. The economic calendar defaults invalid and the emergency stop defaults active. Every response retains `execution_allowed: false`; a risk reservation is not an order. The current stance-to-score mapping (bullish=+1, bearish=-1, neutral=0) is a deterministic bridge, not a trained or calibrated AI model.
+
+
+## Closed-trade memory and agent evaluation
+
+The ERP now accepts verified-by-operator closed-trade outcomes and the forecasts that existed before each trade closed:
+- `POST /api/erp/performance/closed-trade` stores the trade outcome plus per-agent stance, confidence and pre-close timestamp.
+- `GET /api/erp/performance/walk-forward` reports chronological train and out-of-sample hit rate, Brier score, sample count and confidence per agent.
+- Storage: `ERP_PERFORMANCE_DB`, or `ERP_DATA_DIR/erp_performance_memory.sqlite3`.
+
+Forecast timestamps later than the trade close are rejected. Duplicate trade IDs are rejected. The report uses chronological ordering, a 70/30 train/holdout split, and minimum sample thresholds (20 train / 10 holdout by default). This is evaluation memory, not online model training: it does not modify Master Brain weights or claim that an agent is profitable. Outcomes must be supplied by a trusted, reconciled closed-trade source; that broker reconciliation connector is not yet implemented.
