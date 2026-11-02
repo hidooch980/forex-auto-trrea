@@ -20,7 +20,7 @@ input double InpMaxSpreadPoints         = 30.0;
 input int    InpMaxSignalAgeSeconds     = 60;
 input double InpRewardRisk              = 1.50;
 input int    InpDeviationPoints         = 10;
-input bool   InpRequireBrainApproval    = true;
+input bool   InpRequireBrainApproval    = true;\ninput string InpJournalFile             = "ForexAI_TradeJournal.csv";
 
 CTrade trade;
 datetime g_last_signal_timestamp = 0;
