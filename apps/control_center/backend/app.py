@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field
 from . import auth
 from .config import AppConfig
 from .engine import choose_regime, choose_strategy, authorize_trade
-from .i18n import catalog_for_frontend
+from .i18n import catalog_for_frontend, translate
 
 app = FastAPI(title="Forex AI Hybrid Scalper", version="5.2.0")
 cfg = AppConfig()
@@ -24,17 +24,17 @@ class CreateUserPayload(BaseModel):
 def current_session(request: Request):
     session = auth.get_session(request.cookies.get("forex_session"))
     if not session:
-        raise HTTPException(status_code=401, detail="Authentication required.")
+        raise HTTPException(status_code=401, detail=translate("Authentication required.", request.headers.get("x-ui-language")))
     return session
 
 def require_role(request: Request, *roles: str):
     user, csrf = current_session(request)
     if user["role"] not in roles:
-        raise HTTPException(status_code=403, detail="Insufficient role permissions.")
+        raise HTTPException(status_code=403, detail=translate("Insufficient role permissions.", request.headers.get("x-ui-language")))
     if request.method not in ("GET", "HEAD", "OPTIONS"):
         supplied = request.headers.get("x-csrf-token", "")
         if not supplied or not secrets_compare(supplied, csrf):
-            raise HTTPException(status_code=403, detail="Invalid CSRF token.")
+            raise HTTPException(status_code=403, detail=translate("Invalid CSRF token.", request.headers.get("x-ui-language")))
     return user
 
 def secrets_compare(left: str, right: str) -> bool:
@@ -51,10 +51,10 @@ def health():
 
 
 @app.post("/api/auth/login")
-def login(payload: LoginPayload, response: Response):
+def login(payload: LoginPayload, request: Request, response: Response):
     user = auth.authenticate(payload.username, payload.password)
     if not user:
-        raise HTTPException(status_code=401, detail="Invalid username or password.")
+        raise HTTPException(status_code=401, detail=translate("Invalid username or password.", request.headers.get("x-ui-language")))
     token, csrf, expires = auth.create_session(user["id"])
     response.set_cookie(
         "forex_session", token, httponly=True,
@@ -98,7 +98,7 @@ def change_user_active(user_id: int, active: bool, request: Request):
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     if not changed:
-        raise HTTPException(status_code=404, detail="User not found.")
+        raise HTTPException(status_code=404, detail=translate("User not found.", request.headers.get("x-ui-language")))
     return {"ok": True, "user_id": user_id, "active": active}
 
 @app.get("/api/status")
@@ -140,7 +140,7 @@ def activate_emergency_stop(request: Request):
 def decision_preview(request: Request, adx: float = 25, atr_ratio: float = 1.0, symbol: str = "XAUUSD"):
     require_role(request, "admin", "trader", "analyst")
     if symbol not in cfg.symbols:
-        raise HTTPException(status_code=400, detail="Symbol is not in the configured universe.")
+        raise HTTPException(status_code=400, detail=translate("Symbol is not in the configured universe.", request.headers.get("x-ui-language")))
     regime = choose_regime(adx, atr_ratio, True)
     strategy = choose_strategy(regime)
     allowed, reason = authorize_trade(
@@ -313,19 +313,19 @@ function setLanguage(locale){applyLanguage(locale);if(currentUser){document.getE
 let currentPage="overview";
 const pageTitles={overview:"داشبورد معاملاتی",signals:"سیگنال‌های معاملاتی",analysis:"تحلیل بازار",simulator:"شبیه‌ساز تصمیم",modules:"ماژول‌های هوش مصنوعی",users:"مدیریت کاربران"};
 let csrfToken='',currentUser=null;
-async function api(path,options={}){const headers=Object.assign({},options.headers||{});if(options.method&&options.method!=='GET')headers['X-CSRF-Token']=csrfToken;return fetch(path,Object.assign({credentials:'same-origin'},options,{headers}));}
-async function login(){const msg=document.getElementById('login-message');try{const r=await fetch('/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:document.getElementById('login-user').value,password:document.getElementById('login-pass').value})});const d=await r.json();if(!r.ok)throw Error(t('ورود ناموفق بود')+(d.detail?' · '+d.detail:''));csrfToken=d.csrf_token;document.getElementById('login-pass').value='';showApp(d.user);}catch(e){msg.textContent=e.message;}}
+async function api(path,options={}){const headers=Object.assign({"X-UI-Language":activeLocale},options.headers||{});if(options.method&&options.method!=='GET')headers['X-CSRF-Token']=csrfToken;return fetch(path,Object.assign({credentials:'same-origin'},options,{headers}));}
+async function login(){const msg=document.getElementById('login-message');try{const r=await fetch('/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json','X-UI-Language':activeLocale},body:JSON.stringify({username:document.getElementById('login-user').value,password:document.getElementById('login-pass').value})});const d=await r.json();if(!r.ok)throw Error(t('ورود ناموفق بود')+(d.detail?' · '+d.detail:''));csrfToken=d.csrf_token;document.getElementById('login-pass').value='';showApp(d.user);}catch(e){msg.textContent=e.message;}}
 function showApp(user){currentUser=user;document.getElementById('login-screen').hidden=true;document.getElementById('app-shell').hidden=false;document.getElementById('account-label').textContent=user.username;document.getElementById('role-label').textContent=t('نقش: ')+t(user.role);document.getElementById('avatar').textContent=(user.username||'U').slice(0,1).toUpperCase();document.getElementById('users-nav').hidden=user.role!=='admin';refreshStatus();if(user.role==='admin')loadUsers();}
 async function restoreSession(){try{const r=await fetch('/api/auth/me',{credentials:'same-origin'});if(!r.ok)return;const d=await r.json();csrfToken=d.csrf_token;showApp(d.user);}catch(e){}}
 function goPage(name,button){currentPage=name;if(name==='users'&&(!currentUser||currentUser.role!=='admin'))return;document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));document.getElementById('page-'+name).classList.add('active');document.querySelectorAll('.nav button').forEach(b=>b.classList.remove('active'));if(button)button.classList.add('active');document.getElementById('page-title').textContent=t(pageTitles[name]);document.getElementById('crumb').textContent=t(pageTitles[name]);}
 function toggleTheme(){document.documentElement.classList.toggle('light');}
 async function logout(){try{await api('/api/auth/logout',{method:'POST'});}finally{csrfToken='';location.reload();}}
-async function loadUsers(){const el=document.getElementById('users-list');try{const r=await fetch('/api/users');const d=await r.json();if(!r.ok)throw Error(d.detail||'خطا');el.replaceChildren();d.users.forEach(u=>{const row=document.createElement('div');row.className='user-row';const label=document.createElement('span');label.textContent=u.username+' · '+u.role+' · '+(u.active?'فعال':'غیرفعال');row.appendChild(label);if(u.role!=='admin'){const b=document.createElement('button');b.className='ghost';b.textContent=u.active?'غیرفعال‌کردن':'فعال‌کردن';b.onclick=()=>setUserActive(u.id,!u.active);row.appendChild(b);}el.appendChild(row);});}catch(e){el.textContent=e.message;}}
+async function loadUsers(){const el=document.getElementById('users-list');try{const r=await fetch('/api/users',{headers:{'X-UI-Language':activeLocale}});const d=await r.json();if(!r.ok)throw Error(d.detail||'خطا');el.replaceChildren();d.users.forEach(u=>{const row=document.createElement('div');row.className='user-row';const label=document.createElement('span');label.textContent=u.username+' · '+u.role+' · '+(u.active?'فعال':'غیرفعال');row.appendChild(label);if(u.role!=='admin'){const b=document.createElement('button');b.className='ghost';b.textContent=u.active?'غیرفعال‌کردن':'فعال‌کردن';b.onclick=()=>setUserActive(u.id,!u.active);row.appendChild(b);}el.appendChild(row);});}catch(e){el.textContent=e.message;}}
 async function createUser(){try{const r=await api('/api/users',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:document.getElementById('new-username').value,password:document.getElementById('new-password').value,role:document.getElementById('new-role').value})});const d=await r.json();if(!r.ok)throw Error(d.detail||'خطا');document.getElementById('new-password').value='';await loadUsers();}catch(e){document.getElementById('users-list').textContent=e.message;}}
 async function setUserActive(id,active){try{const r=await api('/api/users/'+id+'/active?active='+active,{method:'PATCH'});const d=await r.json();if(!r.ok)throw Error(d.detail||'خطا');await loadUsers();}catch(e){document.getElementById('users-list').textContent=e.message;}}
-async function refreshStatus(){const el=document.getElementById('status');try{const r=await fetch('/api/status');if(!r.ok)throw Error('HTTP '+r.status);const d=await r.json();el.textContent=t('توقف اضطراری: ')+(d.emergency_stop?t('فعال'):t('غیرفعال'))+' · '+t('فیلتر خبر: ')+(d.news_filter_enabled?t('روشن'):t('خاموش'))+' · MT5: '+t('متصل نیست')+' · '+t('اجرای واقعی: غیرفعال');}catch(e){el.textContent='وضعیت سرویس دریافت نشد: '+e.message;}}
+async function refreshStatus(){const el=document.getElementById('status');try{const r=await fetch('/api/status',{headers:{'X-UI-Language':activeLocale}});if(!r.ok)throw Error('HTTP '+r.status);const d=await r.json();el.textContent=t('توقف اضطراری: ')+(d.emergency_stop?t('فعال'):t('غیرفعال'))+' · '+t('فیلتر خبر: ')+(d.news_filter_enabled?t('روشن'):t('خاموش'))+' · MT5: '+t('متصل نیست')+' · '+t('اجرای واقعی: غیرفعال');}catch(e){el.textContent='وضعیت سرویس دریافت نشد: '+e.message;}}
 async function activateStop(){const b=document.getElementById('stop'),t=document.getElementById('toast');b.disabled=true;try{const r=await api('/api/emergency-stop',{method:'POST'});if(!r.ok)throw Error('HTTP '+r.status);t.textContent=t('قفل توقف اضطراری فعال شد.');await refreshStatus();}catch(e){t.textContent=t('خطا: ')+e.message;}finally{b.disabled=false;}}
-async function preview(){const s=document.getElementById('symbol').value,el=document.getElementById('preview');try{const r=await fetch('/api/decision-preview?symbol='+encodeURIComponent(s));const d=await r.json();if(!r.ok)throw Error(d.detail||'خطا');el.textContent=s+' · '+t('رژیم: ')+d.regime+' · '+t('استراتژی: ')+d.strategy+' · '+t('مجوز اجرا: خیر')+' · '+d.guard_reason+' · '+t('پیش‌نمایش غیرزنده');}catch(e){el.textContent='پیش‌نمایش در دسترس نیست: '+e.message;}}
+async function preview(){const s=document.getElementById('symbol').value,el=document.getElementById('preview');try{const r=await fetch('/api/decision-preview?symbol='+encodeURIComponent(s),{headers:{'X-UI-Language':activeLocale}});const d=await r.json();if(!r.ok)throw Error(d.detail||'خطا');el.textContent=s+' · '+t('رژیم: ')+d.regime+' · '+t('استراتژی: ')+d.strategy+' · '+t('مجوز اجرا: خیر')+' · '+d.guard_reason+' · '+t('پیش‌نمایش غیرزنده');}catch(e){el.textContent='پیش‌نمایش در دسترس نیست: '+e.message;}}
 try{applyLanguage(localStorage.getItem('forexai-locale')||'fa');}catch(e){applyLanguage('fa');}
 restoreSession();
 </script>
