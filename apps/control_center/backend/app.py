@@ -90,8 +90,12 @@ def create_user(payload: CreateUserPayload, request: Request):
 
 @app.patch("/api/users/{user_id}/active")
 def change_user_active(user_id: int, active: bool, request: Request):
-    require_role(request, "admin")
-    if not auth.set_user_active(user_id, active):
+    actor = require_role(request, "admin")
+    try:
+        changed = auth.set_user_active(user_id, active, actor_user_id=actor["id"])
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    if not changed:
         raise HTTPException(status_code=404, detail="User not found.")
     return {"ok": True, "user_id": user_id, "active": active}
 
