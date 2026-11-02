@@ -72,7 +72,7 @@ def test_erp_risk_api_rejects_over_budget_and_requires_admin_for_unlock(tmp_path
     endpoint = _endpoint(router, "/api/erp/risk/reservations", "POST")
     endpoint(ReservationPayload(reservation_id="one", engine="breakout", risk_pct=0.02), request)
     with pytest.raises(HTTPException) as exc:
-        endpoint(ReservationPayload(reservation_id="two", engine="pullback", risk_pct=0.02), request)
+        endpoint(ReservationPayload(reservation_id="two", engine="breakout", risk_pct=0.02), request)
     assert exc.value.status_code == 409
 
     unlock = _endpoint(router, "/api/erp/risk/unlock", "POST")
