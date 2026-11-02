@@ -281,6 +281,7 @@ html[dir=rtl] .nav button:hover{transform:translateX(-3px)}html[dir=ltr] .nav bu
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
 @media(max-width:700px){.nav button.active{box-shadow:inset 0 -3px #54e2c0}.nav button:hover{transform:none}.card:hover,.ticker:hover,.module:hover{transform:none}}
 
+.table-wrap{width:100%;overflow-x:auto;margin-top:12px}.data-table{width:100%;border-collapse:collapse;min-width:620px;text-align:start}.data-table th,.data-table td{padding:11px 13px;border-bottom:1px solid var(--line);white-space:nowrap}.data-table th{color:var(--muted);font-size:11px;font-weight:700}.data-table td{font-size:12px}.data-table tbody tr:hover{background:var(--panel2)}
 </style>
 </head>
 <body>
