@@ -8,7 +8,8 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
-from typing import Callable
+from typing import Callable, Any
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
@@ -16,6 +17,38 @@ from pydantic import BaseModel, Field
 from modules.risk_state_store import (
     PersistentRiskLedger, RiskLimitError, RiskStateError,
 )
+from modules.data_pipeline import PersistentPipeline, PipelineError
+from modules.agent_contracts import validate_agent_output
+from modules.market_data_quality import validate_bars
+from modules.master_brain.engine import AgentSignal, MarketContext, BrainConfig, evaluate_market
+
+class AgentEvidencePayload(BaseModel):
+    agent_id: str = Field(min_length=1, max_length=80)
+    schema_version: str = Field(min_length=1, max_length=40)
+    scope: str = Field(min_length=1, max_length=120)
+    as_of: str
+    source_ids: list[str] = Field(min_length=1, max_length=30)
+    data_quality: str
+    confidence: float = Field(ge=0, le=1)
+    stance: str
+    rationale: str = Field(min_length=1, max_length=1000)
+    invalidations: list[str] = Field(default_factory=list, max_length=20)
+    limitations: list[str] = Field(default_factory=list)
+
+
+class BrainPipelinePayload(BaseModel):
+    symbol: str = Field(min_length=3, max_length=32)
+    bars: list[dict[str, Any]] = Field(min_length=2, max_length=5000)
+    expected_interval_seconds: int = Field(gt=0, le=86400)
+    market_as_of: str
+    agents: list[AgentEvidencePayload] = Field(min_length=1, max_length=20)
+    calendar_valid: bool = False
+    high_impact_blackout: bool = False
+    emergency_stop: bool = True
+    daily_loss_pct: float = Field(default=0, ge=0, le=100)
+    drawdown_pct: float = Field(default=0, ge=0, le=100)
+    spread_pips: float = Field(default=0, ge=0, le=100000)
+
 
 class EquityMarkPayload(BaseModel):
     equity: float = Field(gt=0, le=1_000_000_000_000)
@@ -54,6 +87,108 @@ def _snapshot_dict(snapshot):
 
 def build_erp_router(require_role: Callable, ledger: PersistentRiskLedger) -> APIRouter:
     router = APIRouter(prefix="/api/erp", tags=["ERP Integration"])
+
+    pipeline = PersistentPipeline(default_pipeline_path())
+
+    def execute_brain_pipeline(run_id: str, raw: dict):
+        try:
+            pipeline.stage(run_id, "VALIDATE", "validation_started", "Checking market bars and agent evidence")
+            now = datetime.now(timezone.utc)
+            market_as_of = datetime.fromisoformat(raw["market_as_of"].replace("Z", "+00:00"))
+            if market_as_of.tzinfo is None or market_as_of.utcoffset() is None:
+                raise PipelineError("invalid_evidence", "Market timestamp must include a timezone")
+            quality = validate_bars(
+                raw["bars"], as_of=now, max_age_seconds=7200,
+                expected_interval_seconds=raw["expected_interval_seconds"],
+            )
+            if not quality.valid:
+                raise PipelineError("invalid_evidence", "Market data rejected: " + ",".join(quality.errors))
+            signals = []
+            for item in raw["agents"]:
+                validated = validate_agent_output(item, now=now, max_age_seconds=900)
+                if validated.scope.upper() != raw["symbol"].upper():
+                    raise PipelineError("schema_violation", "Agent scope does not match requested symbol")
+                score = {"bullish": 1.0, "bearish": -1.0, "neutral": 0.0, "unavailable": 0.0}[validated.stance]
+                signals.append(AgentSignal(
+                    name=validated.agent_id, score=score,
+                    confidence=validated.confidence, rationale=validated.rationale,
+                    age_seconds=max(0.0, (now - validated.as_of).total_seconds()),
+                    available=validated.stance != "unavailable",
+                ))
+            pipeline.stage(run_id, "FUSE", "evidence_validated", f"{len(signals)} agent outputs and {quality.rows} bars validated")
+            context = MarketContext(
+                symbol=raw["symbol"], market_data_valid=quality.valid,
+                calendar_valid=raw["calendar_valid"],
+                high_impact_blackout=raw["high_impact_blackout"],
+                emergency_stop=raw["emergency_stop"],
+                daily_loss_pct=raw["daily_loss_pct"],
+                drawdown_pct=raw["drawdown_pct"], spread_pips=raw["spread_pips"],
+                requested_risk_pct=0.025,
+            )
+            decision = evaluate_market(context, signals, BrainConfig())
+            pipeline.stage(run_id, "RISK_GATE", "brain_decision_created", "Deterministic committee decision evaluated")
+            output = {
+                "decision": decision.to_dict(),
+                "market_quality": quality.to_dict(),
+                "execution_allowed": False,
+                "live_trading_enabled": False,
+                "risk_reservation": None,
+            }
+            if decision.approved:
+                try:
+                    reserved = ledger.reserve(run_id, "master_brain", decision.risk_pct, status="PENDING")
+                    output["risk_reservation"] = _snapshot_dict(reserved)
+                except (RiskLimitError, RiskStateError) as exc:
+                    output["decision"]["approved"] = False
+                    output["decision"]["action"] = "HOLD"
+                    output["decision"]["risk_pct"] = 0.0
+                    output["decision"]["reasons"] = list(output["decision"]["reasons"]) + ["central_risk_ledger_blocked"]
+                    output["risk_block_reason"] = str(exc)
+            pipeline.finish(run_id, output)
+            return pipeline.get(run_id)
+        except PipelineError as exc:
+            pipeline.fail(run_id, exc.code, str(exc), retryable=exc.retryable)
+            return pipeline.get(run_id)
+        except (ValueError, TypeError, KeyError) as exc:
+            pipeline.fail(run_id, "invalid_evidence", str(exc))
+            return pipeline.get(run_id)
+        except Exception as exc:
+            pipeline.fail(run_id, "internal_pipeline_error", type(exc).__name__)
+            return pipeline.get(run_id)
+
+    @router.post("/brain/pipeline")
+    def run_brain_pipeline(payload: BrainPipelinePayload, request: Request):
+        require_role(request, "admin", "trader", "analyst")
+        try:
+            run_id, created = pipeline.create(payload.model_dump(), request.headers.get("idempotency-key"))
+        except (ValueError, TypeError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        result = execute_brain_pipeline(run_id, payload.model_dump()) if created else pipeline.get(run_id)
+        return {"created": created, "run": result, "execution_allowed": False}
+
+    @router.get("/brain/pipeline/health")
+    def brain_pipeline_health(request: Request):
+        require_role(request, "admin", "trader", "analyst", "viewer")
+        return pipeline.health()
+
+    @router.get("/brain/pipeline/{run_id}")
+    def brain_pipeline_run(run_id: str, request: Request):
+        require_role(request, "admin", "trader", "analyst", "viewer")
+        result = pipeline.get(run_id)
+        if not result:
+            raise HTTPException(status_code=404, detail="Pipeline run not found")
+        return result
+
+    @router.post("/brain/pipeline/{run_id}/retry")
+    def retry_brain_pipeline(run_id: str, request: Request):
+        require_role(request, "admin", "trader")
+        try:
+            raw, _ = pipeline.retry(run_id)
+        except KeyError as exc:
+            raise HTTPException(status_code=404, detail="Pipeline run not found") from exc
+        except PipelineError as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
+        return {"run": execute_brain_pipeline(run_id, raw), "execution_allowed": False}
 
     @router.get("/catalog")
     def catalog(request: Request):
@@ -150,3 +285,10 @@ def default_ledger_path() -> Path:
     if configured:
         return Path(configured)
     return Path(os.getenv("ERP_DATA_DIR", "data")) / "erp_risk_ledger.sqlite3"
+
+
+def default_pipeline_path() -> Path:
+    configured = os.getenv("ERP_PIPELINE_DB")
+    if configured:
+        return Path(configured)
+    return Path(os.getenv("ERP_DATA_DIR", "data")) / "erp_pipeline.sqlite3"
