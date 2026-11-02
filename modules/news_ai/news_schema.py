@@ -53,6 +53,10 @@ def validate_news_article(article: dict[str, Any]) -> dict[str, Any]:
         field: _localized(article.get(field), field)
         for field in REQUIRED_LOCALIZED_FIELDS
     }
+    currencies = article.get("currencies", [])
+    if not isinstance(currencies, (list, tuple, set)):
+        raise ValueError("currencies must be a list")
+    normalized_currencies = sorted({str(x).strip().upper() for x in currencies if str(x).strip()})
     available = sorted(set.intersection(*(set(v) for v in localized.values())))
     return {
         "id": article_id,
@@ -62,7 +66,7 @@ def validate_news_article(article: dict[str, Any]) -> dict[str, Any]:
         "category": category,
         "impact": impact,
         "sentiment": sentiment,
-        "currencies": sorted({str(x).upper() for x in currencies}),
+        "currencies": normalized_currencies,
         "localized": localized,
         "available_locales": available,
     }
