@@ -125,6 +125,24 @@ def _validate_config(config: BrainConfig) -> None:
             raise ValueError("instrument risk caps must have non-empty symbols and positive finite values")
 
 
+def _instrument_risk_cap(profile: RiskProfile, symbol: str) -> float:
+    """Resolve caps for broker suffixes (for example XAUUSD.a or XAUUSDm)."""
+    normalized = symbol.strip().upper()
+    caps = profile.instrument_risk_caps_pct
+    matching = [
+        (key.strip().upper(), cap)
+        for key, cap in caps.items()
+        if normalized == key.strip().upper()
+        or normalized.startswith(key.strip().upper())
+    ]
+    if matching:
+        longest = max(len(key) for key, _ in matching)
+        return min(cap for key, cap in matching if len(key) == longest)
+    if normalized.startswith("XAU"):
+        return caps.get("XAUUSD", 0.10)
+    return profile.max_risk_per_trade_pct
+
+
 def evaluate_market(
     context: MarketContext,
     signals: list[AgentSignal] | tuple[AgentSignal, ...],
@@ -211,7 +229,7 @@ def evaluate_market(
 
     instrument_cap = min(
         profile.max_risk_per_trade_pct,
-        profile.instrument_risk_caps_pct.get(context.symbol.strip().upper(), profile.max_risk_per_trade_pct),
+        _instrument_risk_cap(profile, context.symbol),
     )
     requested = instrument_cap if context.requested_risk_pct is None else context.requested_risk_pct
     if not isfinite(requested) or requested < 0:
