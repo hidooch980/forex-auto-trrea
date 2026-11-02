@@ -44,6 +44,22 @@ decision = evaluate_market(
 print(decision.to_dict())
 ```
 
+## MT5 signal publisher
+
+`signal_bridge.py` publishes an already-created `BrainDecision` to the
+MetaTrader 5 shared Common\\Files directory. It uses atomic replacement,
+HMAC-SHA256 authentication, a random nonce, a UTC timestamp and an explicit
+HOLD message to clear an older directional signal.
+
+The publisher does **not** generate agent signals, fetch live prices or compute
+a stop distance. The caller must provide a validated positive `sl_points` for
+BUY/SELL decisions and use the same 32+ byte secret configured in the EA's
+`InpBridgeSecret` input. Keep that secret out of source control.
+
+See [the MT5 bridge setup](../../mt5/README.md#authenticated-python-to-mt5-bridge)
+for the local folder setup and limitations. This is a local same-computer
+transport, not a cloud connection.
+
 ## Test
 
 From repository root:
