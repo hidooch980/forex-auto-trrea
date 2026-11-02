@@ -14,6 +14,7 @@ from .config import AppConfig
 from .engine import choose_regime, choose_strategy, authorize_trade
 from .i18n import catalog_for_frontend, translate
 from modules.ftmo_compliance import account_registry
+from modules.broker_directory import directory as broker_directory
 
 app = FastAPI(title="Forex AI Hybrid Scalper", version="5.2.0")
 cfg = AppConfig()
@@ -27,6 +28,12 @@ class CreateUserPayload(BaseModel):
     username: str = Field(min_length=3, max_length=64)
     password: str = Field(min_length=14, max_length=256)
     role: str
+
+class BrokerServerPayload(BaseModel):
+    broker_name: str = Field(min_length=1, max_length=100)
+    platform: str = Field(default="mt5", pattern="^(mt4|mt5)$")
+    environment: str = Field(pattern="^(demo|live)$")
+    server_name: str = Field(min_length=1, max_length=160)
 
 class FTMOAccountPayload(BaseModel):
     label: str = Field(min_length=1, max_length=80)
@@ -123,6 +130,34 @@ def ftmo_products(request: Request):
     require_role(request, "admin", "trader", "analyst", "viewer")
     return {"products": account_registry.PRODUCTS, "platforms": sorted(account_registry.PLATFORMS),
             "currencies": sorted(account_registry.CURRENCIES)}
+
+@app.get("/api/brokers/search")
+def search_brokers(request: Request, q: str = "", limit: int = 30):
+    user, _ = current_session(request)
+    return {"brokers": broker_directory.search_brokers(user["id"], q, limit)}
+
+
+@app.get("/api/brokers/servers")
+def broker_servers(request: Request, broker: str, platform: str = "mt5", environment: str | None = None):
+    user, _ = current_session(request)
+    try:
+        return {"servers": broker_directory.list_servers(user["id"], broker, platform, environment)}
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.post("/api/brokers/servers")
+def add_broker_server(payload: BrokerServerPayload, request: Request):
+    user = require_role(request, "admin", "trader")
+    try:
+        server = broker_directory.save_server(
+            user["id"], payload.broker_name, payload.platform,
+            payload.environment, payload.server_name,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return {"ok": True, "server": server}
+
 
 @app.get("/api/ftmo/accounts")
 def ftmo_accounts(request: Request):
@@ -567,6 +602,21 @@ html[dir=rtl] .nav button:hover{transform:translateX(-3px)}html[dir=ltr] .nav bu
    </form><div id="ftmo-message" class="status" aria-live="polite"></div>
   </div>
   <div class="card" style="margin-top:14px"><div class="section-head"><h3>حساب‌های ثبت‌شده</h3><button class="ghost" onclick="loadFtmoAccounts()">بروزرسانی</button></div><div id="ftmo-account-list" class="status">در حال دریافت...</div></div>
+  <div class="card" style="margin-top:14px">
+   <div class="section-head"><h3>جست‌وجوی بروکر و سرورهای MT4 / MT5</h3><span class="pill">Demo / Live</span></div>
+   <p class="eyebrow">نام بروکر را جست‌وجو کن؛ سرور دقیق Demo یا Live را انتخاب یا ثبت کن. پیشنهادهای ثبت‌شده فقط برای حساب کاربری خودت ذخیره می‌شوند.</p>
+   <form id="broker-server-form" onsubmit="saveBrokerServer(event)" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px">
+    <input class="field" id="broker-search" list="broker-suggestions" placeholder="جست‌وجوی نام بروکر..." autocomplete="off" required maxlength="100" oninput="searchBrokerNames()" onchange="loadBrokerServers()">
+    <datalist id="broker-suggestions"></datalist>
+    <select class="field" id="broker-platform" onchange="loadBrokerServers()"><option value="mt5">MetaTrader 5</option><option value="mt4">MetaTrader 4</option></select>
+    <select class="field" id="broker-environment" onchange="loadBrokerServers()"><option value="demo">Demo (آزمایشی)</option><option value="live">Live (واقعی)</option></select>
+    <input class="field" id="broker-server-search" list="broker-server-suggestions" placeholder="نام دقیق سرور بروکر..." autocomplete="off" required maxlength="160">
+    <datalist id="broker-server-suggestions"></datalist>
+    <button class="primary" type="submit">＋ ذخیره سرور</button>
+   </form>
+   <div id="broker-directory-message" class="status" aria-live="polite"></div>
+   <div id="broker-server-list" class="status">برای دیدن پیشنهادهای سرور، بروکر را جست‌وجو کن.</div>
+  </div>
   <div class="notice">این بخش فعلاً مشخصات حساب را ذخیره می‌کند؛ اتصال زنده MT5 و ارسال سفارش هنوز فعال نیست.</div>
  </section>
  <section id="page-users" class="page"><div class="card"><div class="section-head"><h3>مدیریت کاربران</h3><span class="pill">مدیر سیستم</span></div><div class="actions"><input class="field" id="new-username" placeholder="نام کاربری"><input class="field" id="new-password" type="password" autocomplete="new-password" placeholder="رمز حداقل ۱۴ نویسه"><select class="field" id="new-role"><option value="trader">معامله‌گر</option><option value="analyst">تحلیل‌گر</option><option value="viewer">فقط مشاهده</option></select><button class="primary" onclick="createUser()">ایجاد کاربر</button></div><div id="users-list" class="status"></div></div></section>
@@ -591,6 +641,38 @@ async function restoreSession(){try{const r=await fetch('/api/auth/me',{credenti
 function goPage(name,button){currentPage=name;if(name==='users'&&(!currentUser||currentUser.role!=='admin'))return;document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));document.getElementById('page-'+name).classList.add('active');document.querySelectorAll('.nav button').forEach(b=>b.classList.remove('active'));if(button)button.classList.add('active');if(name==='news')loadNews();if(name==='performance')loadPerformance();if(name==='ftmo'){loadFtmoProducts();loadFtmoAccounts();}document.getElementById('page-title').textContent=t(pageTitles[name]);document.getElementById('crumb').textContent=t(pageTitles[name]);}
 function toggleTheme(){document.documentElement.classList.toggle('light');}
 async function logout(){try{await api('/api/auth/logout',{method:'POST'});}finally{csrfToken='';location.reload();}}
+let brokerSearchTimer=null;
+async function searchBrokerNames(){
+ const input=document.getElementById('broker-search');const q=input.value.trim();
+ clearTimeout(brokerSearchTimer);
+ brokerSearchTimer=setTimeout(async()=>{try{
+  const r=await fetch('/api/brokers/search?q='+encodeURIComponent(q),{headers:{'X-UI-Language':activeLocale}});
+  const d=await r.json();if(!r.ok)throw Error(d.detail||'خطا');
+  const list=document.getElementById('broker-suggestions');list.replaceChildren();
+  (d.brokers||[]).forEach(b=>{const o=document.createElement('option');o.value=b.name;list.appendChild(o);});
+ }catch(e){document.getElementById('broker-directory-message').textContent=e.message;}},120);
+}
+async function loadBrokerServers(){
+ const broker=document.getElementById('broker-search').value.trim();const platform=document.getElementById('broker-platform').value;const environment=document.getElementById('broker-environment').value;
+ const list=document.getElementById('broker-server-suggestions');const view=document.getElementById('broker-server-list');
+ list.replaceChildren();if(!broker){view.textContent='ابتدا نام بروکر را جست‌وجو کن.';return;}
+ try{
+  const url='/api/brokers/servers?broker='+encodeURIComponent(broker)+'&platform='+platform+'&environment='+environment;
+  const r=await fetch(url,{headers:{'X-UI-Language':activeLocale}});const d=await r.json();if(!r.ok)throw Error(d.detail||'خطا');
+  (d.servers||[]).forEach(server=>{const o=document.createElement('option');o.value=server.server_name;list.appendChild(o);});
+  view.textContent=d.servers&&d.servers.length?'سرورهای ذخیره‌شده '+(environment==='demo'?'آزمایشی':'واقعی')+': '+d.servers.map(x=>x.server_name).join(' · '):'هنوز سروری برای این بروکر و نوع حساب ذخیره نشده؛ نام دقیق را از پنل بروکر وارد و ذخیره کن.';
+ }catch(e){view.textContent=e.message;}
+}
+async function saveBrokerServer(e){
+ e.preventDefault();const msg=document.getElementById('broker-directory-message');
+ const payload={broker_name:document.getElementById('broker-search').value.trim(),platform:document.getElementById('broker-platform').value,environment:document.getElementById('broker-environment').value,server_name:document.getElementById('broker-server-search').value.trim()};
+ try{
+  const r=await api('/api/brokers/servers',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+  const d=await r.json();if(!r.ok)throw Error(d.detail||'ذخیره سرور ناموفق بود');
+  msg.textContent='سرور ذخیره شد و از این پس در پیشنهادهای همین بروکر نمایش داده می‌شود.';
+  document.getElementById('broker-server-search').value='';await searchBrokerNames();await loadBrokerServers();
+ }catch(err){msg.textContent='خطا: '+err.message;}
+}
 let ftmoProducts={};
 const ftmoLabels={cfd_1_step:"FTMO Challenge 1-Step",cfd_2_step:"FTMO Challenge 2-Step",cfd_instant:"FTMO Instant",futures:"FTMO Futures",free_trial:"Free Trial"};
 const ftmoPhaseLabels={challenge:"Challenge",verification:"Verification",funded:"FTMO Account / Funded",instant:"Instant Account",evaluation:"Evaluation",sim_funded:"Sim-Funded",trial:"Free Trial"};
