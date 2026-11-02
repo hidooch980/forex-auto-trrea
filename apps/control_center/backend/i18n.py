@@ -162,6 +162,7 @@ CATALOG = {
     "تعداد خبرهای در دسترس": {"en": "Available articles", "ar": "الأخبار المتاحة", "tr": "Mevcut haberler"},
     "فید خبری": {"en": "News feed", "ar": "موجز الأخبار", "tr": "Haber akışı"},
     "متصل نیست": {"en": "Not connected", "ar": "غير متصل", "tr": "Bağlı değil"},
+    "مشاهده منبع": {"en": "View source", "ar": "عرض المصدر", "tr": "Kaynağı görüntüle"},
 }
 ALIASES = {"fa": {}, "en": {}, "ar": {}, "tr": {}}
 for _source, _translations in CATALOG.items():
