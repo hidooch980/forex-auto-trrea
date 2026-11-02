@@ -47,6 +47,24 @@ Example for EURUSD:
 signal authentication, stale/replay protection across restarts, and end-to-end integration
 tests still need to be implemented. Do not manually publish test signals on a live account.
 
+## Trade journal (CSV)
+
+The EA records deal events belonging to its configured magic number through
+`OnTradeTransaction`. Both opening and closing deal records are written to
+`MQL5/Files/ForexAI_TradeJournal.csv` (or the filename set in
+`InpJournalFile`). The journal includes server time, deal and position IDs,
+symbol, deal type/entry type, volume, price, profit, commission, swap, fee,
+net result, account balance/equity, magic number and broker comment.
+
+- The file is append-only from the EA; it is not uploaded or sent anywhere.
+- Open it from MT5: File → Open Data Folder → MQL5 → Files.
+- Net result per deal is profit + commission + swap + fee. A round trip can
+  contain separate entry and exit rows; analyze by position ID for trade-level totals.
+- Broker accounting conventions can vary. Verify commissions and fees against the account history.
+- This is an execution journal, not a complete strategy-decision journal: signal rationale,
+  agent votes, news context and screenshots are not yet included.
+- Keep a backup before editing or clearing the CSV.
+
 ## Install in MetaTrader 5
 
 1. Open MetaTrader 5 → File → Open Data Folder.
