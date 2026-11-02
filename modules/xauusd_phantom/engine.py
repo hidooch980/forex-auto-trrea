@@ -100,7 +100,10 @@ def _config_valid(config: PhantomConfig) -> bool:
         config.max_spread_points, config.trailing_atr_multiple,
         config.profit_vault_share,
     )
-    if not all(_valid_number(float(value)) for value in numeric_limits):
+    try:
+        if not all(_valid_number(float(value)) for value in numeric_limits):
+            return False
+    except (TypeError, ValueError, OverflowError):
         return False
     return (
         0 <= config.min_confidence <= 1
