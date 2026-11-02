@@ -22,6 +22,7 @@ from modules.agent_contracts import validate_agent_output
 from modules.market_data_quality import validate_bars
 from modules.master_brain.engine import AgentSignal, MarketContext, BrainConfig, evaluate_market
 from modules.performance_memory import PerformanceMemory
+from modules.cognitive_cells import CellularLearning, analyze_market_affect
 
 class AgentEvidencePayload(BaseModel):
     agent_id: str = Field(min_length=1, max_length=80)
@@ -66,6 +67,15 @@ class ClosedTradeOutcomePayload(BaseModel):
     forecasts: list[AgentForecastPayload] = Field(min_length=1, max_length=30)
 
 
+class MarketAffectPayload(BaseModel):
+    volatility_pct: float = Field(ge=0, le=1000)
+    spread_ratio: float = Field(ge=0, le=1000)
+    drawdown_pct: float = Field(ge=0, le=100)
+    consecutive_losses: int = Field(ge=0, le=1000)
+    agent_disagreement: float = Field(ge=0, le=1)
+    data_quality_score: float = Field(ge=0, le=1)
+
+
 class EquityMarkPayload(BaseModel):
     equity: float = Field(gt=0, le=1_000_000_000_000)
     timestamp: int | None = Field(default=None, ge=0)
@@ -106,6 +116,7 @@ def build_erp_router(require_role: Callable, ledger: PersistentRiskLedger) -> AP
 
     pipeline = PersistentPipeline(default_pipeline_path())
     performance = PerformanceMemory(default_performance_path())
+    cells = CellularLearning(default_cells_path())
 
     def execute_brain_pipeline(run_id: str, raw: dict):
         try:
@@ -215,7 +226,14 @@ def build_erp_router(require_role: Callable, ledger: PersistentRiskLedger) -> AP
                 payload.trade_id, payload.symbol, payload.closed_at,
                 payload.realized_return_pct, [item.model_dump() for item in payload.forecasts],
             )
-            return result
+            outcome = "win" if payload.realized_return_pct > 0 else "loss" if payload.realized_return_pct < 0 else "neutral"
+            for forecast in payload.forecasts:
+                stance = forecast.stance
+                correct = (stance == "bullish" and outcome == "win") or (stance == "bearish" and outcome == "loss")
+                cell_outcome = "neutral" if stance == "neutral" or outcome == "neutral" else "win" if correct else "loss"
+                if forecast.agent_id.strip().lower() in {"technical", "institutional", "news", "macro", "smart_money", "strategy"}:
+                    cells.observe(forecast.agent_id, cell_outcome, closed_at=payload.closed_at)
+            return {**result, "cell_learning": "updated_in_shadow_mode"}
         except (ValueError, TypeError) as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
         except Exception as exc:
@@ -227,6 +245,23 @@ def build_erp_router(require_role: Callable, ledger: PersistentRiskLedger) -> AP
     def performance_walk_forward(request: Request):
         require_role(request, "admin", "trader", "analyst", "viewer")
         return performance.report()
+
+    @router.get("/cognition/cells")
+    def cognition_cells(request: Request):
+        require_role(request, "admin", "trader", "analyst", "viewer")
+        return cells.snapshot()
+
+    @router.post("/cognition/market-affect")
+    def cognition_market_affect(payload: MarketAffectPayload, request: Request):
+        require_role(request, "admin", "trader", "analyst", "viewer")
+        affect = analyze_market_affect(**payload.model_dump())
+        return {
+            "state": affect.state,
+            "stress_score": affect.stress_score,
+            "flags": list(affect.flags),
+            "human_emotion_inference": False,
+            "trading_effect": "HOLD_REVIEW_REQUIRED" if affect.state == "extreme" else "RESEARCH_CONTEXT_ONLY",
+        }
 
     @router.get("/catalog")
     def catalog(request: Request):
@@ -240,6 +275,7 @@ def build_erp_router(require_role: Callable, ledger: PersistentRiskLedger) -> AP
                 {"id": "persistent_risk_ledger", "state": "connected", "api": "/api/erp/risk/snapshot"},
                 {"id": "data_pipeline_error_center", "state": "connected", "api": "/api/erp/brain/pipeline/health"},
                 {"id": "agent_performance_memory", "state": "connected", "api": "/api/erp/performance/walk-forward"},
+                {"id": "cognitive_cells", "state": "shadow_learning", "api": "/api/erp/cognition/cells"},
                 {"id": "portfolio_risk_guard", "state": "preview_only", "api": "/api/risk/portfolio-preview"},
                 {"id": "broker_directory", "state": "connected", "api": "/api/brokers"},
                 {"id": "ftmo_registry", "state": "connected", "api": "/api/ftmo/accounts"},
@@ -339,3 +375,10 @@ def default_performance_path() -> Path:
     if configured:
         return Path(configured)
     return Path(os.getenv("ERP_DATA_DIR", "data")) / "erp_performance_memory.sqlite3"
+
+
+def default_cells_path() -> Path:
+    configured = os.getenv("ERP_CELLS_DB")
+    if configured:
+        return Path(configured)
+    return Path(os.getenv("ERP_DATA_DIR", "data")) / "erp_cognitive_cells.sqlite3"
