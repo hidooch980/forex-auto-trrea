@@ -165,3 +165,11 @@ The module does not infer a person's actual emotional state and does not place, 
 The catalog deliberately does not invent exact Demo/Live server labels: these can differ by broker entity, region, platform and account group, and may change. A broker name appearing in autocomplete does not mean its server endpoints have been verified or that a terminal connection is available. Users should copy the exact server label shown by their broker or MT4/MT5 login screen. The directory stores names only; it never stores account passwords or investor passwords. Saved server suggestions are isolated per user.
 
 The current directory is a starter catalog, not an exhaustive registry of every broker worldwide. MT5 terminal-side broker discovery and automatic synchronization with all brokers are not yet integrated.
+
+## Cross-market portfolio risk for large and two-sided trading
+
+`modules/portfolio_risk_guard` adds a deterministic portfolio-level pre-trade evaluator for combined Forex, metals, crypto spot/futures and other configured markets. It aggregates stop-risk across the entire book, applies separate per-market risk caps, and measures gross leverage, margin usage, per-instrument concentration, visible-liquidity participation and spread.
+
+Long and short positions are deliberately aggregated as **gross risk**; opposite directions are not assumed to cancel because basis, funding, margin, execution and liquidation risks remain. Missing/invalid market data, missing stop-loss, and an active portfolio emergency stop fail closed. Default limits are conservative starting values and must be calibrated to verified account equity, contract specifications and venue liquidity.
+
+This is a tested policy component only. It is **not yet connected to live account/position feeds, the Master Brain, broker/exchange order routing or liquidation controls**. It does not place, amend or close orders, and live trading remains disabled. Liquidity-depth inputs must come from a fresh, venue-specific order book; estimates or stale depth must not be treated as executable capacity.
