@@ -116,7 +116,7 @@ class ReservationTransitionPayload(BaseModel):
     timestamp: int | None = Field(default=None, ge=0)
 
 class UnlockPayload(BaseModel):
-    lock_name: str = Field(pattern="^(daily|drawdown)$")
+    lock_name: str = Field(pattern="^(daily|drawdown|emergency_stop)$")
     reason: str = Field(min_length=8, max_length=500)
     timestamp: int | None = Field(default=None, ge=0)
 
@@ -130,6 +130,7 @@ def _snapshot_dict(snapshot):
         "peak_drawdown_pct": snapshot.peak_drawdown_pct,
         "daily_lock": snapshot.daily_lock,
         "drawdown_lock": snapshot.drawdown_lock,
+        "emergency_stop": snapshot.emergency_stop,
         "locked": snapshot.locked,
         "updated_at": snapshot.updated_at,
     }
@@ -195,7 +196,7 @@ def build_erp_router(require_role: Callable, ledger: PersistentRiskLedger) -> AP
                 symbol=raw["symbol"], market_data_valid=quality.valid,
                 calendar_valid=raw["calendar_valid"],
                 high_impact_blackout=raw["high_impact_blackout"],
-                emergency_stop=raw["emergency_stop"] or affect.state == "extreme",
+                emergency_stop=raw["emergency_stop"] or ledger.snapshot().locked or affect.state == "extreme",
                 daily_loss_pct=raw["daily_loss_pct"],
                 drawdown_pct=raw["drawdown_pct"], spread_pips=raw["spread_pips"],
                 requested_risk_pct=0.025, reliability=reliability,
@@ -223,7 +224,7 @@ def build_erp_router(require_role: Callable, ledger: PersistentRiskLedger) -> AP
                         peak_drawdown_pct=behavior_input.peak_drawdown_pct,
                         trades_today=behavior_input.trades_today,
                         consecutive_losses=behavior_input.consecutive_losses,
-                        emergency_stop=behavior_input.emergency_stop,
+                        emergency_stop=behavior_input.emergency_stop or ledger.snapshot().locked,
                     )
                     behavior_metrics = BehaviorMetrics(
                         trades_last_hour=behavior_input.trades_last_hour,
@@ -234,7 +235,7 @@ def build_erp_router(require_role: Callable, ledger: PersistentRiskLedger) -> AP
                         normal_signal_age_seconds=behavior_input.normal_signal_age_seconds,
                     )
                     proposal = TradeProposal(
-                        risk_pct=decision.risk_pct,
+                        risk_pct=behavior_input.proposed_risk_pct,
                         reward_risk=behavior_input.reward_risk,
                         has_stop_loss=behavior_input.has_stop_loss,
                         market_data_valid=behavior_input.market_data_valid,
@@ -257,7 +258,9 @@ def build_erp_router(require_role: Callable, ledger: PersistentRiskLedger) -> AP
                     decision_data["reasons"] = list(decision_data["reasons"]) + ["behavioral_guard_blocked"]
                 else:
                     decision_data["risk_pct"] = min(
-                        decision_data["risk_pct"], behavioral_guard["risk_cap_pct"]
+                        decision_data["risk_pct"],
+                        behavior_input.proposed_risk_pct,
+                        behavioral_guard["risk_cap_pct"],
                     )
 
             pipeline.stage(run_id, "RISK_GATE", "brain_decision_created", "Master Brain and behavioral risk gates evaluated")
@@ -488,6 +491,17 @@ def build_erp_router(require_role: Callable, ledger: PersistentRiskLedger) -> AP
         except RiskStateError as exc:
             raise HTTPException(status_code=409, detail=str(exc)) from exc
         except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        return {"ok": True, "risk": _snapshot_dict(snap), "execution_allowed": False}
+
+    @router.post("/risk/emergency-stop")
+    def activate_emergency_stop(payload: UnlockPayload, request: Request):
+        require_role(request, "admin")
+        if payload.lock_name != "emergency_stop":
+            raise HTTPException(status_code=400, detail="lock_name must be emergency_stop")
+        try:
+            snap = ledger.set_emergency_stop(True, payload.reason, now=payload.timestamp)
+        except (ValueError, RiskStateError) as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
         return {"ok": True, "risk": _snapshot_dict(snap), "execution_allowed": False}
 
