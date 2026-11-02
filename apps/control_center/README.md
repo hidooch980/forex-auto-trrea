@@ -17,7 +17,7 @@ Open `http://127.0.0.1:8000` for the public product website, then choose **ور�
 
 ## User security and roles
 
-Accounts are stored in SQLite at `data/auth.sqlite3`; password hashes use scrypt with per-user random salts. Session IDs are random opaque tokens stored server-side as SHA-256 hashes. Cookies are HttpOnly and SameSite=Strict; state-changing authenticated API calls require a per-session CSRF token.
+Accounts are stored in SQLite at `data/auth.sqlite3`; password hashes use scrypt with per-user random salts. Session IDs are random opaque tokens stored server-side as SHA-256 hashes. Cookies are HttpOnly and SameSite=Strict; the Secure flag defaults on (set `COOKIE_SECURE=false` only for local plain-HTTP development); state-changing authenticated API calls require a per-session CSRF token. Login attempts are throttled persistently per IP/username identity (8 failures in a 5-minute window triggers a 15-minute lockout). API responses are marked no-store and baseline browser security headers are applied.
 
 Roles:
 - `admin`: list/create/deactivate users and access all dashboard controls.
@@ -34,7 +34,7 @@ export ADMIN_PASSWORD="use-a-unique-password-at-least-14-characters"
 
 No default account or password is created. Keep the admin password in your hosting provider's secret manager; never commit it to GitHub. If an administrator already exists, changing these variables will not overwrite that account.
 
-For HTTPS deployment, set `COOKIE_SECURE=true`. Keep it false only for local HTTP development. Set `AUTH_DB_PATH` to a persistent, writable location and back it up securely. Set `SESSION_TTL_SECONDS` to adjust the session lifetime (default 8 hours). Disable a user from the admin panel to revoke all of that user's sessions.
+For HTTPS deployment, keep `COOKIE_SECURE=true` (the default). Set it false only for local HTTP development. Set `AUTH_DB_PATH` to a persistent, writable location and back it up securely. Set `SESSION_TTL_SECONDS` to adjust the session lifetime (default 8 hours). Disable a user from the admin panel to revoke all of that user's sessions.
 
 API:
 - `POST /api/auth/login`, `GET /api/auth/me`, `POST /api/auth/logout`
@@ -59,5 +59,5 @@ The desktop launcher starts the local API on `127.0.0.1:8000` and opens it in a 
 - No live market prices, broker connection, MT5 order placement or production news-calendar provider.
 - Live order execution remains disabled.
 - The emergency-stop latch is process-local; it is not a broker-side kill switch.
-- Use HTTPS, a reverse proxy, firewall restrictions, persistent encrypted backups and host-level monitoring before remote deployment. Add rate limiting and account recovery controls before exposing login to the public internet.
+- Use HTTPS, a reverse proxy, firewall restrictions, persistent encrypted backups and host-level monitoring before remote deployment. Add edge/WAF rate limits, account recovery controls, CSP hardening, audit logging and independent security review before exposing login to the public internet.
 - Do not expose the development server directly to the public internet.
