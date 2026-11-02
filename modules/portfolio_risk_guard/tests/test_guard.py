@@ -26,7 +26,7 @@ def test_long_and_short_risks_are_added_not_netted():
     )
     result = evaluate_portfolio(PortfolioSnapshot(10000, book), intent())
     assert not result.approved
-    assert result.total_open_risk_pct == 1.7
+    assert result.total_open_risk_pct == pytest.approx(1.7)
     assert "instrument_concentration_limit" in result.reasons
 
 
