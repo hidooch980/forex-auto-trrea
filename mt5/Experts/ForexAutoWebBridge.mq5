@@ -3,7 +3,7 @@
 //| Read-only market snapshot publisher. NO TRADE FUNCTIONS.         |
 //+------------------------------------------------------------------+
 #property strict
-#property version   "1.00"
+#property version   "1.01"
 #property description "Publishes read-only MT5 snapshots to Forex Auto."
 
 input string BridgeUrl = "https://79.137.125.61/api/mt5/bridge/ingest";
