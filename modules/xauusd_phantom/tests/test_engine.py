@@ -90,6 +90,12 @@ def test_unknown_side_and_invalid_config_fail_closed():
     assert not result.approved
     assert result.blocked[0][1] == "invalid_config"
 
+    malformed_config = PhantomConfig(max_signal_age_seconds="bad")
+    result = evaluate_cycle([signal("breakout")], [], now=100,
+                            spread_points=5, equity_usd=1000, config=malformed_config)
+    assert not result.approved
+    assert result.blocked[0][1] == "invalid_config"
+
 
 def test_invalid_timestamp_and_cycle_time_fail_closed():
     bad_signal = signal("breakout", timestamp=100.5)
