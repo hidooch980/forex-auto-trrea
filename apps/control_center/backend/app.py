@@ -424,12 +424,12 @@ function formatMetric(v){if(v===null||v===undefined)return "—";return new Intl
 function renderMarketMap(rows){
  const el=document.getElementById("live-market-map");el.replaceChildren();
  if(!rows.length){el.textContent=t("با اتصال قیمت لحظه‌ای نمادها، نقشه تغییرات بازار اینجا نمایش داده می‌شود.");return;}
- rows.forEach(row=>{const item=document.createElement("span");item.className="pill";item.style.display="inline-flex";item.style.margin="4px";item.textContent=row.symbol+" · "+formatMetric(row.change_pct)+"%";el.appendChild(item);});
+ rows.forEach(row=>{const item=document.createElement("span");item.className="module";item.style.display="inline-flex";item.style.flexDirection="column";item.style.margin="4px";item.style.minWidth="112px";item.style.padding="16px";item.style.background=row.direction==="up"?"#16a34a22":row.direction==="down"?"#ef444422":"var(--panel2)";item.style.borderColor=row.direction==="up"?"var(--green)":row.direction==="down"?"var(--red)":"var(--line)";const symbol=document.createElement("b");symbol.textContent=row.symbol;const change=document.createElement("small");change.textContent=formatMetric(row.change_pct)+"%";item.append(symbol,change);el.appendChild(item);});
 }
 function renderSignalHeatmap(rows){
  const el=document.getElementById("signal-heatmap");el.replaceChildren();
  if(!rows.length){el.textContent=t("پس از ثبت معاملات بسته‌شده، عملکرد مثبت و منفی هر نماد در این نقشه نمایش داده می‌شود.");return;}
- rows.forEach(row=>{const item=document.createElement("div");item.className="module";item.style.display="inline-flex";item.style.margin="4px";item.style.borderColor=row.performance==="positive"?"var(--green)":row.performance==="negative"?"var(--red)":"var(--line)";const title=document.createElement("b");title.textContent=row.symbol;const detail=document.createElement("small");detail.textContent=formatMetric(row.average_profit);item.append(title,detail);el.appendChild(item);});
+ rows.forEach(row=>{const item=document.createElement("div");item.className="module";item.style.display="inline-flex";item.style.margin="4px";item.style.borderColor=row.performance==="positive"?"var(--green)":row.performance==="negative"?"var(--red)":"var(--line)";item.style.background=row.performance==="positive"?"#16a34a22":row.performance==="negative"?"#ef444422":"var(--panel2)";const title=document.createElement("b");title.textContent=row.symbol;const detail=document.createElement("small");detail.textContent=formatMetric(row.average_profit);item.append(title,detail);el.appendChild(item);});
 }
 function renderSymbolRanking(rows){
  const body=document.getElementById("symbol-ranking");body.replaceChildren();
