@@ -186,5 +186,5 @@ The planner includes fail-closed checks for stale/future signals, invalid stop/t
 The four strategy names are independent proposal slots, not four completed profitable trading algorithms. Signal generation, broker-specific pending-order lifecycle, persistent vault accounting, economic-calendar integration, MT5 compilation, Strategy Tester validation and demo forward-testing remain separate release gates. Run its tests with:
 
 ```bash
-PYTHONPATH=modules/xauusd_phantom python -m pytest -q modules/xauusd_phantom/tests
+PYTHONPATH=modules python -m pytest -q modules/xauusd_phantom/tests
 ```
