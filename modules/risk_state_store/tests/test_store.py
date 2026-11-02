@@ -75,3 +75,23 @@ def test_oco_reservation_is_a_single_max_loss_budget(tmp_path):
     # The execution adapter reserves the worst-case loss once for the OCO group.
     ledger.reserve("oco-group-1", "breakout", .08, status="PENDING", now=1)
     assert ledger.snapshot(now=2).active_risk_pct == pytest.approx(.08)
+
+
+def test_daily_lock_resets_on_next_utc_day_but_drawdown_lock_does_not(tmp_path):
+    from datetime import datetime, timezone, timedelta
+    ledger = PersistentRiskLedger(tmp_path / "risk.db",
+        RiskLimits(max_total_risk_pct=.1, max_engine_risk_pct=.05,
+                   max_daily_loss_pct=1, max_peak_drawdown_pct=20))
+    day_one = int(datetime(2026, 11, 1, 23, 59, tzinfo=timezone.utc).timestamp())
+    day_two = int((datetime(2026, 11, 1, 23, 59, tzinfo=timezone.utc)
+                   + timedelta(minutes=2)).timestamp())
+    ledger.record_equity(1000, now=day_one)
+    assert ledger.record_equity(985, now=day_one+30).daily_lock
+    next_day = ledger.record_equity(985, now=day_two)
+    assert not next_day.daily_lock
+    assert next_day.daily_loss_pct == 0
+
+
+def test_in_memory_database_is_rejected_as_not_persistent():
+    with pytest.raises(ValueError, match="persistent SQLite file"):
+        PersistentRiskLedger(":memory:")
