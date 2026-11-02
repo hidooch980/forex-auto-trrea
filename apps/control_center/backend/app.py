@@ -256,8 +256,123 @@ def decision_preview(request: Request, adx: float = 25, atr_ratio: float = 1.0, 
 
 
 @app.get("/", response_class=HTMLResponse)
+def public_site():
+    return SITE_HTML
+
+
+@app.get("/app", response_class=HTMLResponse)
 def dashboard():
     return HTML
+
+
+@app.get("/manifest.webmanifest")
+def pwa_manifest():
+    return Response(content=PWA_MANIFEST, media_type="application/manifest+json")
+
+
+@app.get("/service-worker.js")
+def service_worker():
+    return Response(content=SERVICE_WORKER, media_type="application/javascript",
+                    headers={"Service-Worker-Allowed": "/", "Cache-Control": "no-cache"})
+
+
+@app.get("/app-icon.svg")
+def app_icon():
+    return Response(content=APP_ICON, media_type="image/svg+xml")
+
+
+@app.get("/offline", response_class=HTMLResponse)
+def offline_page():
+    return Response(content=OFFLINE_HTML, media_type="text/html")
+
+
+PWA_MANIFEST = """{
+  "id": "/app",
+  "name": "Forex AI Hybrid Scalper",
+  "short_name": "Forex AI",
+  "description": "تحلیل بازار، مدیریت ریسک و مدیریت حساب‌های FTMO",
+  "lang": "fa",
+  "dir": "rtl",
+  "start_url": "/app",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#090e1b",
+  "theme_color": "#0b1020",
+  "icons": [
+    {"src": "/app-icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable"}
+  ]
+}"""
+
+APP_ICON = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#39d6a2"/><stop offset="1" stop-color="#4d83e8"/></linearGradient></defs>
+<rect width="512" height="512" rx="116" fill="#0b1020"/><rect x="42" y="42" width="428" height="428" rx="104" fill="url(#g)"/>
+<path d="M145 358V154h125c66 0 102 34 102 91 0 42-21 70-59 83l67 30h-94l-54-26h-5v26zm82-96h42c23 0 35-7 35-19s-12-19-35-19h-42z" fill="#071522"/>
+</svg>"""
+
+SERVICE_WORKER = """const CACHE = "forex-ai-shell-v1";
+const SHELL = ["/app", "/manifest.webmanifest", "/app-icon.svg", "/offline"];
+self.addEventListener("install", event => {
+  event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(SHELL)).then(() => self.skipWaiting()));
+});
+self.addEventListener("activate", event => {
+  event.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(key => key !== CACHE).map(key => caches.delete(key)))).then(() => self.clients.claim()));
+});
+self.addEventListener("fetch", event => {
+  const request = event.request;
+  if (request.method !== "GET") return;
+  const url = new URL(request.url);
+  if (url.origin !== self.location.origin || url.pathname.startsWith("/api/")) return;
+  if (request.mode === "navigate") {
+    event.respondWith(fetch(request).then(response => {
+      if (response.ok && (url.pathname === "/" || url.pathname === "/app")) {
+        const copy = response.clone();
+        caches.open(CACHE).then(cache => cache.put("/app", copy));
+      }
+      return response;
+    }).catch(async () => (await caches.match(url.pathname === "/" ? "/app" : url.pathname)) || (await caches.match("/offline"))));
+    return;
+  }
+  if (SHELL.includes(url.pathname)) {
+    event.respondWith(caches.match(request).then(cached => cached || fetch(request)));
+  }
+});"""
+
+OFFLINE_HTML = """<!doctype html><html lang="fa" dir="rtl"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#0b1020"><title>آفلاین | Forex AI</title><body style="margin:0;background:#090e1b;color:#edf2fb;font:16px Tahoma,system-ui;display:grid;min-height:100vh;place-items:center;text-align:center"><main><h1>اتصال اینترنت در دسترس نیست</h1><p>پوسته برنامه نصب‌شده در دسترس است؛ برای اطلاعات حساب و داده‌های زنده دوباره متصل شو.</p><a href="/app" style="color:#37d6a0">تلاش دوباره</a></main></body></html>"""
+
+SITE_HTML = r"""<!doctype html>
+<html lang="fa" dir="rtl"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#090e1b"><meta name="description" content="Forex AI Hybrid Scalper؛ مرکز تحلیل بازار، مدیریت ریسک و حساب‌های FTMO.">
+<link rel="manifest" href="/manifest.webmanifest"><link rel="icon" href="/app-icon.svg" type="image/svg+xml">
+<title>Forex AI | پلتفرم هوشمند معامله‌گری</title>
+<style>
+:root{color-scheme:dark;--bg:#090e1b;--panel:#111a2b;--line:#243149;--text:#edf2fb;--muted:#9aa9bf;--green:#37d6a0;--blue:#7c9cff}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 75% 5%,#203653 0,transparent 38%),var(--bg);color:var(--text);font:15px/1.8 Tahoma,system-ui,sans-serif}a{color:inherit;text-decoration:none}.wrap{width:min(1160px,calc(100% - 36px));margin:auto}.nav{height:78px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #ffffff16}.brand{display:flex;align-items:center;gap:12px;font-weight:900;letter-spacing:.5px}.logo{width:42px;height:42px;border-radius:14px;background:linear-gradient(135deg,#39d6a2,#4d83e8);display:grid;place-items:center;color:#071522;font-size:22px}.navlinks{display:flex;gap:22px;color:var(--muted);font-size:13px}.actions{display:flex;gap:10px;align-items:center}.btn{display:inline-flex;align-items:center;justify-content:center;border:1px solid #ffffff25;border-radius:12px;padding:10px 17px;font-weight:700}.btn.primary{background:linear-gradient(120deg,#37d6a0,#69a5ff);border:0;color:#071522}.hero{padding:92px 0 72px;display:grid;grid-template-columns:1.05fr .95fr;gap:55px;align-items:center}.tag{display:inline-flex;border:1px solid #37d6a055;background:#37d6a012;color:#70e8be;border-radius:30px;padding:5px 12px;font-size:12px}.hero h1{font-size:clamp(34px,5vw,58px);line-height:1.3;margin:20px 0}.hero p{color:var(--muted);max-width:620px;font-size:17px}.hero-actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:27px}.visual{border:1px solid #ffffff20;border-radius:24px;padding:18px;background:linear-gradient(150deg,#15263b,#111a2b);box-shadow:0 28px 80px #0006}.visual-top{display:flex;justify-content:space-between;color:var(--muted);font-size:12px}.chart{height:230px;width:100%;margin-top:15px}.chart svg{width:100%;height:100%}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:15px}.stat{background:#ffffff08;border:1px solid #ffffff12;border-radius:12px;padding:12px}.stat small{color:var(--muted);display:block}.stat b{font-size:18px}.section{padding:60px 0}.section h2{font-size:30px;margin:0 0 8px}.lead{color:var(--muted);margin:0 0 25px}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:15px}.feature{background:var(--panel);border:1px solid var(--line);border-radius:17px;padding:22px}.feature .ico{font-size:23px;color:var(--green)}.feature h3{margin:8px 0}.feature p{color:var(--muted);font-size:13px;margin:0}.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}.step{padding:20px;border-inline-start:2px solid var(--green);background:#ffffff08;border-radius:12px}.step b{display:block;font-size:17px}.step span{color:var(--muted);font-size:13px}.notice{margin:35px 0;background:#d7a94c12;border:1px solid #d7a94c44;border-radius:14px;padding:17px;color:#e9d5a6;font-size:13px}.footer{border-top:1px solid #ffffff18;padding:25px 0;color:var(--muted);font-size:12px;display:flex;justify-content:space-between;gap:15px;flex-wrap:wrap}
+@media(max-width:800px){.navlinks{display:none}.hero{grid-template-columns:1fr;padding:55px 0 35px;gap:30px}.grid{grid-template-columns:1fr 1fr}.steps{grid-template-columns:1fr}.hero h1{font-size:38px}}@media(max-width:520px){.grid{grid-template-columns:1fr}.nav{height:68px}.nav .btn{padding:8px 11px;font-size:12px}.stats{grid-template-columns:1fr 1fr 1fr}.stat b{font-size:15px}}
+</style></head><body>
+<header class="wrap nav"><a class="brand" href="/"><span class="logo">F</span><span>FOREX AI<small style="display:block;color:#9aa9bf;font-size:9px;letter-spacing:2px">HYBRID SCALPER</small></span></a>
+<nav class="navlinks"><a href="#features">امکانات</a><a href="#ftmo">مدیریت FTMO</a><a href="#how">نحوه استفاده</a></nav>
+<div class="actions"><button class="btn" id="install" hidden>نصب اپلیکیشن</button><a class="btn primary" href="/app">ورود به پنل</a></div></header>
+<main class="wrap"><section class="hero"><div><span class="tag">● پلتفرم تحلیل و مدیریت ریسک</span><h1>معامله‌گری هوشمند،<br><span style="color:#6fe5b8">با کنترل ریسک در اولویت</span></h1><p>یک فضای کاری یکپارچه برای تحلیل بازار، بررسی سیگنال‌ها، مدیریت حساب‌های FTMO و پایش عملکرد؛ با نمایش شفاف وضعیت اتصال داده‌ها و کنترل‌های ایمنی.</p><div class="hero-actions"><a class="btn primary" href="/app">ورود به داشبورد</a><a class="btn" href="#features">مشاهده امکانات</a></div></div>
+<div class="visual"><div class="visual-top"><span>FOREX AI · MARKET WORKSPACE</span><span style="color:#e9bd68">SAFE MODE</span></div><div class="chart"><svg viewBox="0 0 600 250" preserveAspectRatio="none" aria-label="نمودار تزئینی"><defs><linearGradient id="fill" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#37d6a0" stop-opacity=".35"/><stop offset="1" stop-color="#37d6a0" stop-opacity="0"/></linearGradient></defs><path d="M0 190 L45 172 85 180 130 130 170 150 215 105 255 126 300 80 345 105 390 70 430 95 475 45 520 65 560 25 600 40 L600 250 L0 250Z" fill="url(#fill)"/><path d="M0 190 L45 172 85 180 130 130 170 150 215 105 255 126 300 80 345 105 390 70 430 95 475 45 520 65 560 25 600 40" fill="none" stroke="#37d6a0" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="stats"><div class="stat"><small>حساب‌های FTMO</small><b>چندگانه</b></div><div class="stat"><small>مدیریت ریسک</small><b>قانون‌محور</b></div><div class="stat"><small>اجرای زنده</small><b style="color:#e9bd68">خاموش</b></div></div></div></section>
+<section class="section" id="features"><h2>ابزارهای یکپارچه</h2><p class="lead">همه‌چیز در یک پنل، با وضعیت واقعی و بدون اعداد ساختگی.</p><div class="grid">
+<article class="feature"><div class="ico">⌁</div><h3>تحلیل بازار</h3><p>آماده برای اتصال فید قیمت، ساختار بازار و تحلیل چندلایه؛ تا زمان اتصال، داده زنده جعل نمی‌شود.</p></article>
+<article class="feature"><div class="ico">◎</div><h3>مدیریت حساب FTMO</h3><p>ثبت چند حساب، محصول، مرحله، نوع حساب، سرمایه و پلتفرم با جداسازی اطلاعات هر کاربر.</p></article>
+<article class="feature"><div class="ico">◇</div><h3>هوش مصنوعی ترکیبی</h3><p>ترکیب ماژول‌های تحلیل، فیلترهای ریسک و پیش‌نمایش تصمیم؛ بدون ارسال خودکار سفارش.</p></article>
+<article class="feature"><div class="ico">▤</div><h3>اخبار و رویدادها</h3><p>جایگاه آماده برای خبر و تقویم اقتصادی؛ اتصال منبع معتبر پیش از نمایش رویدادهای زنده ضروری است.</p></article>
+<article class="feature"><div class="ico">▦</div><h3>عملکرد و آمار</h3><p>نرخ برد، سود میانگین، رتبه نمادها و نقشه حرارتی پس از اتصال تاریخچه معاملات بسته‌شده.</p></article>
+<article class="feature"><div class="ico">▣</div><h3>اپلیکیشن قابل نصب</h3><p>نسخه PWA برای افزودن به صفحه اصلی اندروید و دسکتاپ؛ پوسته در حالت آفلاین نیز در دسترس می‌ماند.</p></article>
+</div></section>
+<section class="section" id="ftmo"><h2>حساب‌های FTMO خودت را مدیریت کن</h2><p class="lead">هر حساب تنظیمات و مرحله مخصوص خود را دارد.</p><div class="steps"><div class="step"><b>۱. افزودن حساب</b><span>نام، شناسه اختیاری، سرمایه و ارز را وارد کن.</span></div><div class="step"><b>۲. انتخاب محصول و مرحله</b><span>1-Step، 2-Step، Instant، Futures یا Free Trial بر اساس گزینه‌های پشتیبانی‌شده.</span></div><div class="step"><b>۳. انتخاب نوع حساب</b><span>Standard، Swing یا نوع متناسب با محصول.</span></div></div></section>
+<div class="notice">این پلتفرم ابزار تحلیل و مدیریت است، نه تضمین سود. حساب‌های FTMO از محیط شبیه‌سازی استفاده می‌کنند. اتصال داده زنده، اعتبارسنجی قوانین جاری و آزمون روی حساب آزمایشی باید پیش از هرگونه اجرای واقعی تکمیل شود. در نسخه فعلی ارسال سفارش واقعی غیرفعال است.</div></main>
+<footer class="wrap footer"><span>© Forex AI Hybrid Scalper</span><span>محیط امن · تحلیل و مدیریت ریسک · بدون تضمین سود</span><a href="/app">ورود به پنل</a></footer>
+<script>
+let installPrompt;const installButton=document.getElementById("install");
+window.addEventListener("beforeinstallprompt",event=>{event.preventDefault();installPrompt=event;installButton.hidden=false;});
+installButton.addEventListener("click",async()=>{if(!installPrompt)return;installPrompt.prompt();await installPrompt.userChoice;installPrompt=null;installButton.hidden=true;});
+if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("/service-worker.js").catch(()=>{}));}
+</script></body></html>""";
 
 
 HTML = r"""
@@ -266,6 +381,9 @@ HTML = r"""
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#0b1020">
+<meta name="description" content="Forex AI Hybrid Scalper — داشبورد تحلیل بازار، مدیریت ریسک و حساب‌های FTMO.">
+<link rel="manifest" href="/manifest.webmanifest"><link rel="icon" href="/app-icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/app-icon.svg">
 <title>Forex AI | مرکز هوشمند معاملات</title>
 <style>
 :root{color-scheme:dark;--bg:#090e1b;--panel:#111a2b;--panel2:#151f33;--line:#243149;--text:#edf2fb;--muted:#91a0b8;--green:#37d6a0;--red:#ff6d7a;--gold:#e9bd68;--blue:#7c9cff;--shadow:0 18px 50px #0003}
@@ -374,7 +492,7 @@ html[dir=rtl] .nav button:hover{transform:translateX(-3px)}html[dir=ltr] .nav bu
 </aside>
 <main>
  <header class="topbar"><div><div class="eyebrow">مرکز کنترل / <span id="crumb">نمای کلی</span></div><div class="heading" id="page-title">داشبورد معاملاتی</div></div>
- <div class="top-actions"><select id="language-select" class="field" aria-label="Language" onchange="setLanguage(this.value)"><option value="fa">فارسی</option><option value="en">English</option><option value="ar">العربية</option><option value="tr">Türkçe</option></select><button class="icon-btn" onclick="toggleTheme()" title="تغییر پوسته">◐</button><div class="user-chip"><div class="avatar" id="avatar">U</div><div><b id="account-label">کاربر</b><div class="eyebrow" id="role-label">عضو</div></div></div><button class="ghost" onclick="logout()">خروج</button></div></header>
+ <div class="top-actions"><button class="ghost" id="install-app" hidden onclick="installPwa()">نصب اپلیکیشن</button><select id="language-select" class="field" aria-label="Language" onchange="setLanguage(this.value)"><option value="fa">فارسی</option><option value="en">English</option><option value="ar">العربية</option><option value="tr">Türkçe</option></select><button class="icon-btn" onclick="toggleTheme()" title="تغییر پوسته">◐</button><div class="user-chip"><div class="avatar" id="avatar">U</div><div><b id="account-label">کاربر</b><div class="eyebrow" id="role-label">عضو</div></div></div><button class="ghost" onclick="logout()">خروج</button></div></header>
  <div class="market-strip"><div class="ticker"><small>EUR / USD</small><b>—</b><em>داده زنده متصل نیست</em></div><div class="ticker"><small>GBP / USD</small><b>—</b><em>داده زنده متصل نیست</em></div><div class="ticker"><small>USD / JPY</small><b>—</b><em>داده زنده متصل نیست</em></div><div class="ticker"><small>GOLD / XAU</small><b>—</b><em>داده زنده متصل نیست</em></div></div>
  <section id="page-overview" class="page active">
   <div class="hero"><div><h2>تصمیم‌گیری هوشمند، با کنترل کامل ریسک</h2><p>تحلیل چندلایه بازار و مدیریت سرمایه در یک فضای کاری یکپارچه</p></div><span class="hero-tag">● محیط آزمایشی · بدون اجرای سفارش</span></div>
@@ -526,6 +644,10 @@ function renderSymbolRanking(rows){
 let newsArticles=[];
 async function loadNews(){const list=document.getElementById("news-list");try{const r=await fetch("/api/news",{headers:{"X-UI-Language":activeLocale}});const d=await r.json();if(!r.ok)throw Error(d.detail||"");newsArticles=d.articles||[];document.getElementById("news-feed-status").textContent=t("فید خبری")+" · "+t(d.feed_status==="not_connected"?"متصل نیست":"آماده");document.getElementById("news-positive").textContent=d.sentiment?.positive??0;document.getElementById("news-neutral").textContent=d.sentiment?.neutral??0;document.getElementById("news-negative").textContent=d.sentiment?.negative??0;document.getElementById("news-count").textContent=newsArticles.length;renderNews();}catch(e){list.textContent=t("خطا: ")+e.message;}}
 function renderNews(){const list=document.getElementById("news-list");if(!list)return;list.replaceChildren();const q=(document.getElementById("news-search")?.value||"").toLowerCase();const impact=document.getElementById("news-impact")?.value||"all";const category=document.getElementById("news-category")?.value||"all";const rows=newsArticles.filter(a=>(impact==="all"||a.impact===impact)&&(category==="all"||a.category===category)&&[a.title,a.summary,a.analysis,a.source,a.category].join(" ").toLowerCase().includes(q));if(!rows.length){const empty=document.createElement("div");empty.className="notice";empty.textContent=t("هنوز منبع خبری متصل نشده است.");list.appendChild(empty);return;}rows.forEach(a=>{const card=document.createElement("article");card.className="card";card.style.marginBottom="12px";const head=document.createElement("div");head.className="section-head";const title=document.createElement("h3");title.textContent=a.title;const badge=document.createElement("span");badge.className="pill";badge.textContent=t(a.impact||"متوسط");head.append(title,badge);const meta=document.createElement("div");meta.className="eyebrow";meta.textContent=[a.source,a.category,new Date(a.published_at).toLocaleString(activeLocale),t(a.sentiment||"خنثی")].filter(Boolean).join(" · ");const summary=document.createElement("p");summary.textContent=a.summary||"";if(a.translation_fallback){const fallback=document.createElement("small");fallback.className="eyebrow";fallback.textContent=t("محتوا به زبان دیگری نمایش داده می‌شود.")+" ("+(a.content_locale||"")+")";card.append(fallback);}const analysis=document.createElement("p");analysis.textContent=a.analysis||"";const link=document.createElement("a");link.href=a.url;link.target="_blank";link.rel="noopener noreferrer";link.textContent=t("مشاهده منبع");card.append(head,meta,summary,analysis,link);list.appendChild(card);});}
+let deferredInstallPrompt=null;
+window.addEventListener('beforeinstallprompt',event=>{event.preventDefault();deferredInstallPrompt=event;const b=document.getElementById('install-app');if(b)b.hidden=false;});
+async function installPwa(){if(!deferredInstallPrompt)return;deferredInstallPrompt.prompt();await deferredInstallPrompt.userChoice;deferredInstallPrompt=null;const b=document.getElementById('install-app');if(b)b.hidden=true;}
+if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('/service-worker.js').catch(()=>{}));}
 try{applyLanguage(localStorage.getItem('forexai-locale')||'fa');}catch(e){applyLanguage('fa');}
 restoreSession();
 </script>
