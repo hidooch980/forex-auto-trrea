@@ -399,6 +399,42 @@ async function setUserActive(id,active){try{const r=await api('/api/users/'+id+'
 async function refreshStatus(){const el=document.getElementById('status');try{const r=await fetch('/api/status',{headers:{'X-UI-Language':activeLocale}});if(!r.ok)throw Error('HTTP '+r.status);const d=await r.json();el.textContent=t('توقف اضطراری: ')+(d.emergency_stop?t('فعال'):t('غیرفعال'))+' · '+t('فیلتر خبر: ')+(d.news_filter_enabled?t('روشن'):t('خاموش'))+' · MT5: '+t('متصل نیست')+' · '+t('اجرای واقعی: غیرفعال');}catch(e){el.textContent=t('وضعیت سرویس دریافت نشد: ')+e.message;}}
 async function activateStop(){const b=document.getElementById('stop'),toastEl=document.getElementById('toast');b.disabled=true;try{const r=await api('/api/emergency-stop',{method:'POST'});if(!r.ok)throw Error('HTTP '+r.status);toastEl.textContent=t('قفل توقف اضطراری فعال شد.');await refreshStatus();}catch(e){toastEl.textContent=t('خطا: ')+e.message;}finally{b.disabled=false;}}
 async function preview(){const s=document.getElementById('symbol').value,el=document.getElementById('preview');try{const r=await fetch('/api/decision-preview?symbol='+encodeURIComponent(s),{headers:{'X-UI-Language':activeLocale}});const d=await r.json();if(!r.ok)throw Error(d.detail||'خطا');el.textContent=s+' · '+t('رژیم: ')+d.regime+' · '+t('استراتژی: ')+d.strategy+' · '+t('مجوز اجرا: خیر')+' · '+d.guard_reason+' · '+t('پیش‌نمایش غیرزنده');}catch(e){el.textContent=t('پیش‌نمایش در دسترس نیست: ')+e.message;}}
+async function loadPerformance(){
+ try{
+  const r=await fetch("/api/analytics/overview",{headers:{"X-UI-Language":activeLocale}});
+  const d=await r.json();if(!r.ok)throw Error(d.detail||"");
+  const p=d.signal_performance||{},available=!!p.available;
+  document.getElementById("performance-status").textContent=t(available?"آمار آماده است":"تاریخچه معاملات متصل نیست");
+  document.getElementById("perf-win-rate").textContent=available?p.win_rate_pct+"%":"—";
+  document.getElementById("perf-average").textContent=available?formatMetric(p.average_profit):"—";
+  document.getElementById("perf-net").textContent=available?formatMetric(p.net_profit):"—";
+  document.getElementById("perf-factor").textContent=available?(p.profit_factor==="inf"?"∞":p.profit_factor):"—";
+  document.getElementById("performance-empty").hidden=available;
+  const fg=d.fear_greed||{};
+  document.getElementById("fear-greed-status").textContent=t(fg.available?"شاخص محاسبه شد":"داده کافی نیست");
+  document.getElementById("fear-greed-score").textContent=fg.available?fg.score:"—";
+  document.getElementById("fear-greed-label").textContent=fg.available?t(fg.label):t("در انتظار داده بازار");
+  if(fg.available)document.getElementById("fear-greed-gauge").style.background="conic-gradient(var(--green) "+(fg.score*3.6)+"deg,var(--line) 0deg)";
+  document.getElementById("market-map-status").textContent=t(d.market_data_status==="not_connected"?"فید قیمت متصل نیست":"بازار زنده");
+  renderMarketMap(d.market_heatmap||[]);renderSignalHeatmap(p.heatmap||[]);renderSymbolRanking(p.symbols||[]);
+ }catch(e){document.getElementById("performance-empty").textContent=t("خطا: ")+e.message;}
+}
+function formatMetric(v){if(v===null||v===undefined)return "—";return new Intl.NumberFormat(activeLocale,{maximumFractionDigits:4}).format(v);}
+function renderMarketMap(rows){
+ const el=document.getElementById("live-market-map");el.replaceChildren();
+ if(!rows.length){el.textContent=t("با اتصال قیمت لحظه‌ای نمادها، نقشه تغییرات بازار اینجا نمایش داده می‌شود.");return;}
+ rows.forEach(row=>{const item=document.createElement("span");item.className="pill";item.style.display="inline-flex";item.style.margin="4px";item.textContent=row.symbol+" · "+formatMetric(row.change_pct)+"%";el.appendChild(item);});
+}
+function renderSignalHeatmap(rows){
+ const el=document.getElementById("signal-heatmap");el.replaceChildren();
+ if(!rows.length){el.textContent=t("پس از ثبت معاملات بسته‌شده، عملکرد مثبت و منفی هر نماد در این نقشه نمایش داده می‌شود.");return;}
+ rows.forEach(row=>{const item=document.createElement("div");item.className="module";item.style.display="inline-flex";item.style.margin="4px";item.style.borderColor=row.performance==="positive"?"var(--green)":row.performance==="negative"?"var(--red)":"var(--line)";const title=document.createElement("b");title.textContent=row.symbol;const detail=document.createElement("small");detail.textContent=formatMetric(row.average_profit);item.append(title,detail);el.appendChild(item);});
+}
+function renderSymbolRanking(rows){
+ const body=document.getElementById("symbol-ranking");body.replaceChildren();
+ if(!rows.length){const tr=document.createElement("tr"),td=document.createElement("td");td.colSpan=6;td.textContent=t("هنوز تاریخچه معاملات متصل نشده است.");tr.appendChild(td);body.appendChild(tr);return;}
+ rows.forEach((row,index)=>{const tr=document.createElement("tr");[index+1,row.symbol,row.closed_trades,formatMetric(row.win_rate_pct)+"%",formatMetric(row.average_profit),formatMetric(row.net_profit)].forEach(value=>{const td=document.createElement("td");td.textContent=String(value);tr.appendChild(td);});body.appendChild(tr);});
+}
 let newsArticles=[];
 async function loadNews(){const list=document.getElementById("news-list");try{const r=await fetch("/api/news",{headers:{"X-UI-Language":activeLocale}});const d=await r.json();if(!r.ok)throw Error(d.detail||"");newsArticles=d.articles||[];document.getElementById("news-feed-status").textContent=t("فید خبری")+" · "+t(d.feed_status==="not_connected"?"متصل نیست":"آماده");document.getElementById("news-positive").textContent=d.sentiment?.positive??0;document.getElementById("news-neutral").textContent=d.sentiment?.neutral??0;document.getElementById("news-negative").textContent=d.sentiment?.negative??0;document.getElementById("news-count").textContent=newsArticles.length;renderNews();}catch(e){list.textContent=t("خطا: ")+e.message;}}
 function renderNews(){const list=document.getElementById("news-list");if(!list)return;list.replaceChildren();const q=(document.getElementById("news-search")?.value||"").toLowerCase();const impact=document.getElementById("news-impact")?.value||"all";const category=document.getElementById("news-category")?.value||"all";const rows=newsArticles.filter(a=>(impact==="all"||a.impact===impact)&&(category==="all"||a.category===category)&&[a.title,a.summary,a.analysis,a.source,a.category].join(" ").toLowerCase().includes(q));if(!rows.length){const empty=document.createElement("div");empty.className="notice";empty.textContent=t("هنوز منبع خبری متصل نشده است.");list.appendChild(empty);return;}rows.forEach(a=>{const card=document.createElement("article");card.className="card";card.style.marginBottom="12px";const head=document.createElement("div");head.className="section-head";const title=document.createElement("h3");title.textContent=a.title;const badge=document.createElement("span");badge.className="pill";badge.textContent=t(a.impact||"متوسط");head.append(title,badge);const meta=document.createElement("div");meta.className="eyebrow";meta.textContent=[a.source,a.category,new Date(a.published_at).toLocaleString(activeLocale),t(a.sentiment||"خنثی")].filter(Boolean).join(" · ");const summary=document.createElement("p");summary.textContent=a.summary||"";if(a.translation_fallback){const fallback=document.createElement("small");fallback.className="eyebrow";fallback.textContent=t("محتوا به زبان دیگری نمایش داده می‌شود.")+" ("+(a.content_locale||"")+")";card.append(fallback);}const analysis=document.createElement("p");analysis.textContent=a.analysis||"";const link=document.createElement("a");link.href=a.url;link.target="_blank";link.rel="noopener noreferrer";link.textContent=t("مشاهده منبع");card.append(head,meta,summary,analysis,link);list.appendChild(card);});}
