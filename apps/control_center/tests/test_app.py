@@ -200,3 +200,40 @@ def test_viewer_cannot_call_portfolio_risk_preview():
         assert False, "viewer must not call portfolio risk preview"
     except app_module.HTTPException as exc:
         assert exc.status_code == 403
+
+
+def test_bot_status_is_safe_and_reports_real_integration_limits():
+    request, _ = make_user("viewer")
+    result = app_module.bots_status(request)
+    bots = {item["id"]: item for item in result["bots"]}
+    assert result["execution_allowed"] is False
+    assert bots["signals"]["engine_available"] is True
+    assert bots["signals"]["market_data_connected"] is False
+    assert bots["signals"]["execution_allowed"] is False
+    assert bots["manager"]["engine_available"] is True
+    assert bots["manager"]["live_positions_connected"] is False
+    assert bots["manager"]["execution_allowed"] is False
+    assert bots["users"]["available"] is False
+    assert bots["users"]["user_count"] is None
+
+
+def test_bot_status_exposes_user_count_only_to_admin(monkeypatch):
+    monkeypatch.setattr(
+        app_module, "current_session",
+        lambda request: ({"id": 1, "username": "root", "role": "admin"}, "csrf"),
+    )
+    monkeypatch.setattr(auth, "list_users", lambda: [{"id": 1}, {"id": 2}])
+    result = app_module.bots_status(SimpleNamespace())
+    users = next(item for item in result["bots"] if item["id"] == "users")
+    assert users["available"] is True
+    assert users["user_count"] == 2
+    assert users["endpoint"] == "/api/users"
+
+
+def test_bot_center_dashboard_contains_three_separate_bot_panels():
+    html = app_module.dashboard()
+    assert 'id="bot-signals-state"' in html
+    assert 'id="bot-manager-state"' in html
+    assert 'id="bot-users-state"' in html
+    assert "loadBotStatus" in html
+    assert "execution_allowed" in html
