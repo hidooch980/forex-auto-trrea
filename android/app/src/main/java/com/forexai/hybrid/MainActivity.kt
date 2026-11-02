@@ -57,11 +57,18 @@ class MainActivity : Activity() {
             settings.allowFileAccess = false
             settings.allowContentAccess = false
             settings.mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
+            settings.javaScriptCanOpenWindowsAutomatically = false
+            settings.setSupportMultipleWindows(false)
+            if (android.os.Build.VERSION.SDK_INT >= 26) settings.safeBrowsingEnabled = true
             webViewClient = object : WebViewClient() {
                 override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
                     val uri = request?.url ?: return false
                     val current = Uri.parse(prefs.getString("base_url", "") ?: "")
-                    if (uri.host == current.host) return false
+                    if (uri.scheme != "https") {
+                        status.text = "برای امنیت، فقط پیوند HTTPS باز می‌شود."
+                        return true
+                    }
+                    if (uri.host == current.host && uri.scheme == current.scheme) return false
                     startActivity(Intent(Intent.ACTION_VIEW, uri)); return true
                 }
                 override fun onReceivedError(view: WebView?, request: WebResourceRequest?, error: WebResourceError?) {
@@ -108,7 +115,11 @@ class MainActivity : Activity() {
                 var apkUrl: String? = null
                 if (assets != null) for (i in 0 until assets.length()) {
                     val asset = assets.getJSONObject(i)
-                    if (asset.optString("name") == "forex-ai-release.apk") apkUrl = asset.optString("browser_download_url")
+                    val candidate = Uri.parse(asset.optString("browser_download_url"))
+                    if (asset.optString("name") == "forex-ai-release.apk" &&
+                        candidate.scheme == "https" && candidate.host == "github.com") {
+                        apkUrl = candidate.toString()
+                    }
                 }
                 val latest = tag.split(".").mapNotNull { it.toIntOrNull() }
                 val current = BuildConfig.VERSION_NAME.removeSuffix("-debug").split(".").mapNotNull { it.toIntOrNull() }
