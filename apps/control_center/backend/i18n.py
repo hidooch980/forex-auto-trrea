@@ -176,6 +176,16 @@ CATALOG = {
     "تیتر": {"en": "Headline", "ar": "العنوان", "tr": "Başlık"},
     "تحلیل": {"en": "Analysis", "ar": "التحليل", "tr": "Analiz"},
     "منبع خبری": {"en": "News provider", "ar": "مزود الأخبار", "tr": "Haber sağlayıcısı"},
+    "همه دسته‌ها": {"fa": "همه دسته‌ها", "en": "All categories", "ar": "كل الفئات", "tr": "Tüm kategoriler"},
+    "فارکس": {"fa": "فارکس", "en": "Forex", "ar": "الفوركس", "tr": "Forex"},
+    "طلا": {"fa": "طلا", "en": "Gold", "ar": "الذهب", "tr": "Altın"},
+    "اقتصاد کلان": {"fa": "اقتصاد کلان", "en": "Macro", "ar": "الاقتصاد الكلي", "tr": "Makroekonomi"},
+    "بانک‌های مرکزی": {"fa": "بانک‌های مرکزی", "en": "Central banks", "ar": "البنوك المركزية", "tr": "Merkez bankaları"},
+    "تقویم اقتصادی": {"fa": "تقویم اقتصادی", "en": "Economic calendar", "ar": "التقويم الاقتصادي", "tr": "Ekonomik takvim"},
+    "تورم و CPI": {"fa": "تورم و CPI", "en": "Inflation & CPI", "ar": "التضخم ومؤشر CPI", "tr": "Enflasyon ve TÜFE"},
+    "اشتغال و NFP": {"fa": "اشتغال و NFP", "en": "Employment & NFP", "ar": "التوظيف وNFP", "tr": "İstihdam ve NFP"},
+    "تحلیل بازار": {"fa": "تحلیل بازار", "en": "Market analysis", "ar": "تحليل السوق", "tr": "Piyasa analizi"},
+    "محتوا به زبان دیگری نمایش داده می‌شود.": {"fa": "محتوا به زبان دیگری نمایش داده می‌شود.", "en": "This content is displayed in another language.", "ar": "يُعرض هذا المحتوى بلغة أخرى.", "tr": "Bu içerik başka bir dilde gösteriliyor."},
 }
 ALIASES = {"fa": {}, "en": {}, "ar": {}, "tr": {}}
 for _source, _translations in CATALOG.items():
