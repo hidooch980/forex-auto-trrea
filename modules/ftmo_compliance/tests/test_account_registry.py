@@ -1,6 +1,6 @@
 import pytest
 
-from modules.ftmo_compliance import account_registry as registry
+import account_registry as registry
 
 
 @pytest.fixture
