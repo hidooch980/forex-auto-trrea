@@ -15,7 +15,7 @@ The implementation in `engine.py` accepts normalized inputs and produces an audi
 
 ## Balanced defaults
 
-- Maximum proposed risk: 0.25% per FX trade; XAUUSD has an enforced 0.10% instrument cap. Lower upstream/broker limits still take precedence.
+- Maximum proposed risk: 0.25% per FX trade; XAU-prefixed symbols, including broker suffix variants such as XAUUSD.a, have a hard 0.10% cap. A configured gold cap cannot raise this ceiling. Lower upstream/broker limits still take precedence.
 - Daily loss stop: 1%.
 - Drawdown stop: 5%.
 - Minimum committee confidence: 0.60.
