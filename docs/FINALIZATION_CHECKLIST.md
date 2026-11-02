@@ -10,7 +10,10 @@
 - Isolated specialist learning cells with minimum sample threshold and shadow-only reliability.
 - Observable market-stress scoring and objective trading-behavior proxies.
 - Central risk reservation before any possible downstream execution.
+- Master Brain directional candidates now pass the deterministic behavioral guard before a research decision can retain BUY/SELL status or reserve risk; missing behavioral evidence fails closed, and revenge/FOMO/cooldown flags block the candidate.
 - Execution flags remain false throughout the API.
+
+The behavioral guard is now part of the **research decision pipeline**, but this is not an execution-side gate: no broker order adapter exists, and the guard must be enforced again inside a future trusted execution service.
 
 ## Mandatory blockers before production or live trading
 - [ ] Connect and authenticate a market-data provider; validate symbols, timeframes, bid/ask and completed bars.
