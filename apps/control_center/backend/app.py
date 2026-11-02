@@ -23,6 +23,7 @@ from modules.portfolio_risk_guard import (
 from modules.erp_api.router import build_erp_router, default_ledger_path
 from modules.risk_state_store import PersistentRiskLedger
 from modules.market_radar.api import build_market_radar_router
+from modules.backtest_lab.api import build_backtest_router
 
 app = FastAPI(title="Forex AI Hybrid Scalper", version="5.2.0")
 cfg = AppConfig()
@@ -127,6 +128,7 @@ _emergency_stop_active = True
 ERP_LEDGER = PersistentRiskLedger(default_ledger_path())
 app.include_router(build_erp_router(require_role, ERP_LEDGER))
 app.include_router(build_market_radar_router(require_role))
+app.include_router(build_backtest_router(require_role))
 
 
 @app.get("/api/health")
