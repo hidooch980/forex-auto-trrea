@@ -148,6 +148,20 @@ CATALOG = {
     "مثبت": {"en": "Positive", "ar": "إيجابي", "tr": "Pozitif"},
     "خنثی": {"en": "Neutral", "ar": "محايد", "tr": "Nötr"},
     "منفی": {"en": "Negative", "ar": "سلبي", "tr": "Negatif"},
+
+    "خبرها": {"en": "News", "ar": "الأخبار", "tr": "Haberler"},
+    "اخبار بازار": {"en": "Market News", "ar": "أخبار السوق", "tr": "Piyasa Haberleri"},
+    "جستجو در خبرها": {"en": "Search news", "ar": "ابحث في الأخبار", "tr": "Haberlerde ara"},
+    "همه دسته‌ها": {"en": "All categories", "ar": "كل الفئات", "tr": "Tüm kategoriler"},
+    "همه اهمیت‌ها": {"en": "All impact levels", "ar": "كل مستويات الأهمية", "tr": "Tüm etki düzeyleri"},
+    "زیاد": {"en": "High", "ar": "مرتفع", "tr": "Yüksek"},
+    "متوسط": {"en": "Medium", "ar": "متوسط", "tr": "Orta"},
+    "کم": {"en": "Low", "ar": "منخفض", "tr": "Düşük"},
+    "هنوز منبع خبری متصل نشده است.": {"en": "No news provider is connected yet.", "ar": "لم يتم ربط مزود أخبار بعد.", "tr": "Henüz bir haber sağlayıcısı bağlanmadı."},
+    "پس از اتصال منبع معتبر، خبرها همراه با تیتر، خلاصه، تحلیل، زمان انتشار، منبع و احساسات بازار نمایش داده می‌شوند.": {"en": "After a verified provider is connected, articles will appear with headline, summary, analysis, publication time, source and market sentiment.", "ar": "بعد ربط مزود موثوق، ستظهر الأخبار مع العنوان والملخص والتحليل ووقت النشر والمصدر ومعنويات السوق.", "tr": "Doğrulanmış bir sağlayıcı bağlandığında haberler başlık, özet, analiz, yayın zamanı, kaynak ve piyasa duyarlılığıyla gösterilecektir."},
+    "تعداد خبرهای در دسترس": {"en": "Available articles", "ar": "الأخبار المتاحة", "tr": "Mevcut haberler"},
+    "فید خبری": {"en": "News feed", "ar": "موجز الأخبار", "tr": "Haber akışı"},
+    "متصل نیست": {"en": "Not connected", "ar": "غير متصل", "tr": "Bağlı değil"},
 }
 ALIASES = {"fa": {}, "en": {}, "ar": {}, "tr": {}}
 for _source, _translations in CATALOG.items():
