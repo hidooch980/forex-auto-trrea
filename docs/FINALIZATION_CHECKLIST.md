@@ -1,44 +1,34 @@
 # Finalization and release gate
 
-**Current release classification: tested development scaffold; not production-ready.**
+**Current classification: research-only development build. Not production-ready for live trading.**
 
-## Implemented and covered by repository tests
-- Persistent ERP risk ledger and authenticated ERP API facade.
-- Master Brain research decision chain with data/agent validation.
-- Persistent data pipeline, idempotency, quarantine and bounded transient retry.
-- Closed-trade outcome memory and chronological walk-forward reports.
-- Isolated specialist learning cells with minimum sample threshold and shadow-only reliability.
-- Observable market-stress scoring and objective trading-behavior proxies.
-- Central risk reservation before any possible downstream execution.
-- Master Brain directional candidates now pass the deterministic behavioral guard before a research decision can retain BUY/SELL status or reserve risk; missing behavioral evidence fails closed, and revenge/FOMO/cooldown flags block the candidate.
-- Execution flags remain false throughout the API.
+## Implemented and covered by automated tests
+- Persistent ERP risk ledger, pipeline, performance memory and specialist cells.
+- Cognitive/behavioral risk checks in the research decision path; missing evidence fails closed.
+- Authenticated Control Center with roles, CSRF protection, scrypt password hashes, login throttling and emergency-stop latch.
+- Market Radar: validated OHLC input, EMA/RSI/ATR analysis, freshness checks, authenticated API and dashboard input/results page.
+- Backtest Lab: EMA crossover simulation, signal-at-close/next-open fill model, per-side cost model, trade list and summary metrics; authenticated API and dashboard page.
+- Python CI compiles modules and runs module/control-center tests, including Market Radar and Backtest Lab.
+- All new research APIs return `execution_allowed: false`.
 
-The behavioral guard is now part of the **research decision pipeline**, but this is not an execution-side gate: no broker order adapter exists, and the guard must be enforced again inside a future trusted execution service.
-
-## Mandatory blockers before production or live trading
-- [ ] Connect and authenticate a market-data provider; validate symbols, timeframes, bid/ask and completed bars.
-- [ ] Connect a maintained economic-calendar/news provider with outage and stale-data tests.
-- [ ] Obtain closed trades from a trusted broker/MT5 source and reconcile positions, deals, partial closes, commissions, swaps and account currency before allowing them to update learning memory.
-- [ ] Integrate the behavioral guard into a verified execution-side gate, not merely a preview API.
-- [ ] Implement broker-specific MT5 order adapter, idempotent order IDs, fill/partial-fill handling, restart recovery and broker reconciliation.
-- [ ] Add secrets management, TLS, production authentication/authorization review, audit retention, backups and operational alerting.
+## Remaining mandatory release blockers
+- [ ] Select and connect a licensed/reliable market-data provider; verify completed-bar semantics, symbol mapping, spread, bid/ask, outages and stale/future data.
+- [ ] Select and connect a maintained economic-calendar/news provider; verify timestamps, revisions, impact classifications and outage handling.
+- [ ] Reconcile closed trades, fees, swaps, partial closes and account currency from trusted broker/MT5 history before using them as learning truth.
+- [ ] Implement a broker-specific demo adapter and execution-side risk gate; preview APIs are not execution controls.
+- [ ] Make emergency stop durable/shared, audited, and acknowledged by downstream execution components.
+- [ ] Validate realistic backtest costs, spread, slippage, swaps, gaps, rollovers, data quality and out-of-sample/walk-forward results.
+- [ ] Add alert delivery (email/Telegram/etc.) only after provider selection, user consent and secret provisioning.
+- [ ] Complete dependency/security review, CSP hardening, backups/restore, monitoring, load tests and incident procedures.
 - [ ] Compile MQL5 in MetaEditor, run Strategy Tester, then extended demo forward testing.
-- [ ] Run independent security review, chronological walk-forward, out-of-sample and failure-injection tests.
-- [ ] Require explicit operator approval before enabling any live execution flag.
+- [ ] Build and verify signed Android release on supported devices.
+- [ ] Require explicit operator approval before any live-execution flag can ever be enabled.
 
-## Learning safety rules
-- Cellular memory stores per-specialist directional outcomes. It is not a trained neural network.
-- Reliability is neutral until the configured minimum sample count; shadow multipliers are bounded.
-- No automatic live weight updates.
-- Market-affect labels describe observable market/strategy stress, not a person's psychological state.
-- Extreme market stress forces HOLD in the research decision pipeline.
-- A forecast/outcome submitted through the API is not trusted broker truth until a reconciled source is connected.
-
-## Operational environment variables
-- `ERP_RISK_LEDGER_DB`
-- `ERP_PIPELINE_DB`
-- `ERP_PERFORMANCE_DB`
-- `ERP_CELLS_DB`
-- Or use `ERP_DATA_DIR` as the common data directory.
-
-Do not store credentials or API keys in the repository. Keep live execution disabled until every mandatory blocker is independently verified.
+## Safety constraints
+- No broker credentials, market-data secrets or API keys in the repository.
+- No fabricated live prices, headlines, calendar events, trade history or performance figures.
+- User-entered candles are caller-supplied data, not independently verified provider data.
+- Backtest outputs are historical simulations, not forecasts or guarantees.
+- Learning cells are bounded/shadow-only memory, not self-training neural networks.
+- Emergency stop currently starts active but is process-local; it is not a broker-side kill switch.
+- Keep `live_trading_enabled=False` and `execution_allowed=False`.
