@@ -246,3 +246,15 @@ The ERP now accepts verified-by-operator closed-trade outcomes and the forecasts
 - Storage: `ERP_PERFORMANCE_DB`, or `ERP_DATA_DIR/erp_performance_memory.sqlite3`.
 
 Forecast timestamps later than the trade close are rejected. Duplicate trade IDs are rejected. The report uses chronological ordering, a 70/30 train/holdout split, and minimum sample thresholds (20 train / 10 holdout by default). This is evaluation memory, not online model training: it does not modify Master Brain weights or claim that an agent is profitable. Outcomes must be supplied by a trusted, reconciled closed-trade source; that broker reconciliation connector is not yet implemented.
+
+
+## Cellular specialist learning and market-stress analysis
+
+`modules/cognitive_cells` stores isolated outcome memory for technical, institutional, news, macro, smart-money and strategy specialist cells. A closed-trade outcome updates each matching cell using forecast direction versus realized trade direction. A Beta(1,1) posterior is reported for directional evidence. Shadow reliability multipliers remain neutral until at least 30 directional observations, are bounded to 0.75–1.25, and are never authorized to change live weights. The Master Brain may consume eligible multipliers in research-only evaluation; this is not online neural-network training.
+
+The ERP exposes:
+- `GET /api/erp/cognition/cells` — per-cell samples, posterior and shadow reliability.
+- `POST /api/erp/cognition/market-affect` — observable market stress classification.
+- `POST /api/erp/performance/closed-trade` — also updates matching cell outcome memory.
+
+Market-affect features include realized bar-range proxy, spread ratio, drawdown, loss streak, specialist disagreement and data-quality score. Labels (calm/uncertain/stressed/extreme) describe market/strategy conditions, not a trader's actual mental or emotional state. Extreme stress forces HOLD in the research decision chain. No psychological diagnosis is made.
