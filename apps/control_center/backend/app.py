@@ -559,6 +559,29 @@ button.primary{border:1px solid #54e0b5;background:linear-gradient(110deg,#1aa98
 .login-topline{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:22px}.login-topline .field{width:auto;min-width:110px;padding:7px 10px}.login-card h2{font-size:25px;letter-spacing:-.5px;margin:0 0 7px}.login-card>p{color:var(--muted);font-size:13px;margin:0 0 24px}.login-label{display:block;color:#c5d2e5;font-size:12px;font-weight:700;margin:14px 0 7px}.login-card .field{width:100%;padding:12px 14px}.login-submit{width:100%;display:flex;align-items:center;justify-content:space-between;padding:13px 16px;margin-top:20px}.login-message{min-height:26px;margin-top:12px;color:var(--muted)}.login-message:not(:empty){font-size:12px}.login-foot{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;border-top:1px solid #ffffff14;margin-top:20px;padding-top:15px;color:var(--muted);font-size:10px}.login-foot span:first-child{color:#7ce8c2}.login-caption{text-align:center;color:#8294ad;font-size:11px;margin:17px 0}
 @media(max-width:760px){.shell{display:block}.sidebar{position:relative;width:100%;height:auto}.nav{display:flex;overflow-x:auto;gap:7px;padding-bottom:9px}.nav button{white-space:nowrap;min-width:max-content}.side-bottom{display:none}main{padding:12px}.topbar{position:relative;gap:12px;flex-wrap:wrap}.top-actions{width:100%;flex-wrap:wrap}.login-wrap{margin:5vh auto 3vh}.hero{padding:20px}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
+
+/* Landing page v2: clearer hierarchy, responsive navigation and polished feature surfaces */
+.nav{position:relative;z-index:5;backdrop-filter:blur(14px)}
+.navlinks a{padding:8px 2px;transition:color .2s}
+.navlinks a:hover{color:var(--green)}
+.btn{transition:transform .2s,filter .2s,border-color .2s}
+.btn:hover{transform:translateY(-2px);filter:brightness(1.08);border-color:#6ce8c2}
+.hero{min-height:500px}
+.hero>div:first-child{position:relative;z-index:1}
+.hero .tag{box-shadow:0 0 28px #37d6a022}
+.visual{position:relative;overflow:hidden}
+.visual:before{content:"";position:absolute;inset:-70% -40%;background:linear-gradient(110deg,transparent 43%,#ffffff0b 50%,transparent 57%);transform:translateX(-50%);animation:landingShimmer 10s ease-in-out infinite;pointer-events:none}
+.visual>*{position:relative;z-index:1}
+.feature{position:relative;overflow:hidden;transition:transform .22s,border-color .22s,box-shadow .22s}
+.feature:after{content:"";position:absolute;inset:auto 0 0;height:2px;background:linear-gradient(90deg,transparent,var(--green),var(--blue),transparent);opacity:.0;transition:opacity .2s}
+.feature:hover{transform:translateY(-4px);border-color:#4e7898;box-shadow:0 18px 42px #02081766}
+.feature:hover:after{opacity:1}
+.feature .ico{width:42px;height:42px;display:grid;place-items:center;border-radius:13px;background:#37d6a014;border:1px solid #37d6a033}
+.section{scroll-margin-top:24px}
+.step{transition:transform .2s,border-color .2s}.step:hover{transform:translateY(-3px);border-color:#37d6a0}
+@keyframes landingShimmer{0%,100%{transform:translateX(-50%)}50%{transform:translateX(50%)}}
+@media(max-width:800px){.hero{min-height:0}.visual{max-width:620px;width:100%;margin-inline:auto}}
+@media(prefers-reduced-motion:reduce){.visual:before{animation:none}.feature,.step,.btn{transition:none}}
 </style></head><body>
 <header class="wrap nav"><a class="brand" href="/"><span class="logo">F</span><span>FOREX AI<small style="display:block;color:#9aa9bf;font-size:9px;letter-spacing:2px">HYBRID SCALPER</small></span></a>
 <nav class="navlinks"><a href="#features">امکانات</a><a href="#ftmo">مدیریت FTMO</a><a href="#how">نحوه استفاده</a></nav>
@@ -696,6 +719,27 @@ html[dir=rtl] .nav button:hover{transform:translateX(-3px)}html[dir=ltr] .nav bu
 @media(max-width:700px){.nav button.active{box-shadow:inset 0 -3px #54e2c0}.nav button:hover{transform:none}.card:hover,.ticker:hover,.module:hover{transform:none}}
 
 .table-wrap{width:100%;overflow-x:auto;margin-top:12px}.data-table{width:100%;border-collapse:collapse;min-width:620px;text-align:start}.data-table th,.data-table td{padding:11px 13px;border-bottom:1px solid var(--line);white-space:nowrap}.data-table th{color:var(--muted);font-size:11px;font-weight:700}.data-table td{font-size:12px}.data-table tbody tr:hover{background:var(--panel2)}
+
+/* Dashboard home v2: stronger overview hierarchy and practical responsive spacing */
+#page-overview>.hero{min-height:142px;padding:25px 28px}
+#page-overview>.hero h2{font-size:clamp(19px,2.2vw,25px);letter-spacing:-.3px}
+#page-overview>.grid>.card{position:relative;overflow:hidden;min-height:132px}
+#page-overview>.grid>.card:after{content:"";position:absolute;inset:auto 0 0;height:2px;background:linear-gradient(90deg,transparent,#42efbd88,#8ba7ff88,transparent)}
+#page-overview .content-grid>.card{min-height:300px}
+#page-overview .section-head h3{font-size:15px;letter-spacing:-.2px}
+#page-overview .chart-wrap{height:225px}
+#page-overview .notice{line-height:1.9}
+#page-overview>.card:last-child{background:linear-gradient(145deg,var(--panel),color-mix(in srgb,var(--panel) 90%,#9d5365 10%))}
+#page-overview>.card:last-child .section-head{margin-bottom:10px}
+#page-overview .actions button{min-height:42px}
+@media(max-width:700px){
+ #page-overview>.hero{min-height:0;padding:18px}
+ #page-overview>.grid>.card{min-height:120px}
+ #page-overview .content-grid>.card{min-height:0}
+ #page-overview .chart-wrap{height:175px}
+ #page-overview>.card:last-child .actions{display:grid;grid-template-columns:1fr}
+ #page-overview>.card:last-child .actions button{width:100%}
+}
 </style>
 </head>
 <body>
