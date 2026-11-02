@@ -710,7 +710,7 @@ html[dir=rtl] .nav button:hover{transform:translateX(-3px)}html[dir=ltr] .nav bu
    <p class="eyebrow">این صفحه فقط snapshot واقعی ترمینال را نمایش می‌دهد: قیمت، کندل‌های بسته‌شده، مشخصات نماد و وضعیت حساب. هیچ رمز حساب یا شماره حسابی دریافت یا ذخیره نمی‌شود.</p>
    <div class="actions"><button class="primary" onclick="loadMT5Bridge()">بروزرسانی وضعیت</button><span class="status" id="mt5-updated">در انتظار اتصال</span></div>
    <div class="notice" id="mt5-setup-notice">برای اتصال، سرویس MT5 باید روی همین Ubuntu اجرا شود و Expert Advisor فقط‌خواندنی ForexAutoWebBridge به این API داده ارسال کند. کلید پل باید در تنظیمات امن سرویس و EA تنظیم شود؛ آن را در پیام یا مخزن عمومی قرار نده.</div>
-   <div style="overflow:auto;margin-top:14px"><table class="data-table" style="width:100%"><thead><tr><th>زمان کندل</th><th>Open</th><th>High</th><th>Low</th><th>Close</th><th>Tick volume</th></tr></thead><tbody id="mt5-bars"><tr><td colspan="6">هنوز داده‌ای دریافت نشده است.</td></tr></tbody></table></div>
+   <div style="overflow:auto;margin-top:14px"><table class="data-table" style="width:100%"><thead><tr><th>ساعت بروکر (بدون منطقه زمانی)</th><th>Open</th><th>High</th><th>Low</th><th>Close</th><th>Tick volume</th></tr></thead><tbody id="mt5-bars"><tr><td colspan="6">هنوز داده‌ای دریافت نشده است.</td></tr></tbody></table></div>
    <div class="notice">وضعیت اتصال پس از ۱۲۰ ثانیه بدون داده تازه، قطع نمایش داده می‌شود. داده حساب فقط برای نمایش است. اجرای زنده و ارسال سفارش از این پل پشتیبانی نمی‌شود.</div>
   </div>
  </section>
@@ -1000,7 +1000,7 @@ async function loadMT5Bridge(){
   document.getElementById('mt5-spread').textContent='اسپرد: '+Number(p.spread_points).toFixed(1)+' points';
   document.getElementById('mt5-equity').textContent=Number(p.equity).toFixed(2)+' '+p.currency;
   document.getElementById('mt5-updated').textContent='آخرین دریافت: '+new Date(d.received_at*1000).toLocaleString();
-  document.getElementById('mt5-bars').innerHTML=(p.bars||[]).slice(-30).reverse().map(c=>'<tr><td>'+new Date(c.time*1000).toLocaleString()+'</td><td>'+c.open+'</td><td>'+c.high+'</td><td>'+c.low+'</td><td>'+c.close+'</td><td>'+c.tick_volume+'</td></tr>').join('');
+  document.getElementById('mt5-bars').innerHTML=(p.bars||[]).slice(-30).reverse().map(c=>'<tr><td>'+new Date(c.time*1000).toISOString().slice(0,16).replace('T',' ')+'</td><td>'+c.open+'</td><td>'+c.high+'</td><td>'+c.low+'</td><td>'+c.close+'</td><td>'+c.tick_volume+'</td></tr>').join('');
  }catch(e){state.textContent='خطا';detail.textContent=e.message;}
 }
 </script>
