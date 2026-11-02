@@ -64,6 +64,7 @@ def test_localized_news_article_contract_and_explicit_fallback():
         "analysis": {"fa": "تحلیل فارسی", "en": "English analysis"},
     }
     normalized = validate_news_article(article)
+    assert normalized["currencies"] == ["USD", "XAU"]
     view = article_for_locale(normalized, "tr")
     assert view["title"] == "English headline"
     assert view["content_locale"] == "en"
