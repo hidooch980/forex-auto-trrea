@@ -20,13 +20,11 @@ input double InpMaxSpreadPoints         = 30.0;
 input int    InpMaxSignalAgeSeconds     = 60;
 input double InpRewardRisk              = 1.50;
 input int    InpDeviationPoints         = 10;
-input bool   InpRequireBrainApproval    = true;
 input string InpJournalFile             = "ForexAI_TradeJournal_v2.csv";
 input string InpBridgeSecret            = "";      // Must match Python publisher secret (32+ chars)
 
 CTrade trade;
 datetime g_last_signal_timestamp = 0;
-string g_signal_prefix;
 double g_pending_confidence = -1.0;
 double g_pending_action = -1.0;
 double g_pending_sl_points = -1.0;
@@ -232,7 +230,9 @@ string HmacSha256Hex(const string message, const string secret)
 bool ReadBridgeSignal(double &action, double &confidence,
                       double &sl_points, datetime &signal_time)
 {
-   string filename = "ForexAI_Bridge\\" + _Symbol + ".signal";
+   string normalized_symbol = _Symbol;
+   StringToUpper(normalized_symbol);
+   string filename = "ForexAI_Bridge\\" + normalized_symbol + ".signal";
    int handle = FileOpen(filename, FILE_READ|FILE_CSV|FILE_ANSI|FILE_COMMON, '|');
    if(handle == INVALID_HANDLE)
       return false;
@@ -248,7 +248,9 @@ bool ReadBridgeSignal(double &action, double &confidence,
    string signature = FileReadString(handle);
    FileClose(handle);
 
-   if(version != "FAI1" || symbol != _Symbol ||
+   string expected_symbol = _Symbol;
+   StringToUpper(expected_symbol);
+   if(version != "FAI1" || symbol != expected_symbol ||
       (action_text != "BUY" && action_text != "SELL" && action_text != "HOLD") ||
       (approved_text != "0" && approved_text != "1") ||
       StringLen(nonce) != 32 || StringLen(signature) != 64)
@@ -549,7 +551,6 @@ int OnInit()
       Print("ForexAI bridge: live trading requires a 32+ character shared secret.");
       return INIT_PARAMETERS_INCORRECT;
    }
-   g_signal_prefix = "FAI." + _Symbol + ".";
    trade.SetExpertMagicNumber(InpMagicNumber);
    Print("Forex AI Hybrid Scalper initialized. Live trading: ",
          (InpEnableLiveTrading ? "ENABLED" : "DISABLED"));
