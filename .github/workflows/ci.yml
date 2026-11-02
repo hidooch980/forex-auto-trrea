@@ -23,7 +23,7 @@ jobs:
       - name: Cross-market portfolio risk tests
         run: python -m pytest -q modules/portfolio_risk_guard/tests
       - name: XAUUSD Phantom four-engine tests
-        run: PYTHONPATH=modules/xauusd_phantom python -m pytest -q modules/xauusd_phantom/tests
+        run: PYTHONPATH=modules python -m pytest -q modules/xauusd_phantom/tests
       - name: Smart exit tests
         working-directory: modules/smart_exit
         run: PYTHONPATH=. python -m pytest -q
