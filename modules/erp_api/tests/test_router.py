@@ -11,6 +11,7 @@ def _router(tmp_path, monkeypatch=None):
     if monkeypatch is not None:
         monkeypatch.setenv("ERP_PIPELINE_DB", str(tmp_path / "pipeline.sqlite3"))
         monkeypatch.setenv("ERP_PERFORMANCE_DB", str(tmp_path / "performance.sqlite3"))
+        monkeypatch.setenv("ERP_CELLS_DB", str(tmp_path / "cells.sqlite3"))
     ledger = PersistentRiskLedger(
         tmp_path / "erp.sqlite3",
         RiskLimits(max_total_risk_pct=0.10, max_engine_risk_pct=0.025),
@@ -161,3 +162,32 @@ def test_performance_api_records_outcomes_and_reports_walk_forward(tmp_path, mon
     )
     assert report["agents"]["technical"]["total_samples"] == 1
     assert report["live_weights_modified"] is False
+
+
+def test_closed_trade_updates_shadow_cells_and_cognition_routes(tmp_path, monkeypatch):
+    from modules.erp_api.router import ClosedTradeOutcomePayload, AgentForecastPayload, MarketAffectPayload
+
+    router, _, _ = _router(tmp_path, monkeypatch)
+    saved = _endpoint(router, "/api/erp/performance/closed-trade", "POST")(
+        ClosedTradeOutcomePayload(
+            trade_id="cell-trade-1", symbol="XAUUSD", closed_at=100,
+            realized_return_pct=0.5,
+            forecasts=[AgentForecastPayload(
+                agent_id="technical", stance="bullish", confidence=0.9, as_of=90,
+            )],
+        ), SimpleNamespace(headers={})
+    )
+    assert saved["cell_learning"] == "updated_in_shadow_mode"
+    cells = _endpoint(router, "/api/erp/cognition/cells", "GET")(SimpleNamespace(headers={}))
+    assert cells["cells"]["technical"]["wins"] == 1
+    assert cells["live_weight_change_authorized"] is False
+
+    affect = _endpoint(router, "/api/erp/cognition/market-affect", "POST")(
+        MarketAffectPayload(
+            volatility_pct=4, spread_ratio=3, drawdown_pct=6,
+            consecutive_losses=4, agent_disagreement=0.9, data_quality_score=0.5,
+        ), SimpleNamespace(headers={})
+    )
+    assert affect["state"] == "extreme"
+    assert affect["human_emotion_inference"] is False
+    assert affect["trading_effect"] == "HOLD_REVIEW_REQUIRED"
