@@ -40,6 +40,14 @@ def init_auth() -> None:
             )
         """)
         db.execute("""
+            CREATE TABLE IF NOT EXISTS login_attempts (
+                identity_hash TEXT PRIMARY KEY,
+                attempts INTEGER NOT NULL,
+                window_started INTEGER NOT NULL,
+                blocked_until INTEGER NOT NULL DEFAULT 0
+            )
+        """)
+        db.execute("""
             CREATE TABLE IF NOT EXISTS sessions (
                 token_hash TEXT PRIMARY KEY,
                 user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -184,3 +192,52 @@ def set_user_active(
         if not active:
             db.execute("DELETE FROM sessions WHERE user_id = ?", (user_id,))
         return True
+
+
+def login_is_blocked(identity: str, now: int | None = None) -> tuple[bool, int]:
+    """Persistent per-identity login throttling; identity is hashed before storage."""
+    now = int(time.time()) if now is None else int(now)
+    key = hashlib.sha256(identity.encode("utf-8")).hexdigest()
+    with _connect() as db:
+        row = db.execute(
+            "SELECT attempts, window_started, blocked_until FROM login_attempts WHERE identity_hash = ?",
+            (key,),
+        ).fetchone()
+        if row is None:
+            return False, 0
+        if row["blocked_until"] > now:
+            return True, row["blocked_until"] - now
+        if now - row["window_started"] >= 300:
+            db.execute("DELETE FROM login_attempts WHERE identity_hash = ?", (key,))
+        return False, 0
+
+
+def record_login_failure(identity: str, now: int | None = None) -> None:
+    now = int(time.time()) if now is None else int(now)
+    key = hashlib.sha256(identity.encode("utf-8")).hexdigest()
+    with _connect() as db:
+        db.execute("BEGIN IMMEDIATE")
+        row = db.execute(
+            "SELECT attempts, window_started FROM login_attempts WHERE identity_hash = ?",
+            (key,),
+        ).fetchone()
+        if row is None or now - row["window_started"] >= 300:
+            attempts = 1
+            started = now
+        else:
+            attempts = row["attempts"] + 1
+            started = row["window_started"]
+        blocked_until = now + 900 if attempts >= 8 else 0
+        db.execute(
+            "INSERT INTO login_attempts(identity_hash,attempts,window_started,blocked_until) "
+            "VALUES(?,?,?,?) ON CONFLICT(identity_hash) DO UPDATE SET "
+            "attempts=excluded.attempts, window_started=excluded.window_started, "
+            "blocked_until=excluded.blocked_until",
+            (key, attempts, started, blocked_until),
+        )
+
+
+def clear_login_failures(identity: str) -> None:
+    key = hashlib.sha256(identity.encode("utf-8")).hexdigest()
+    with _connect() as db:
+        db.execute("DELETE FROM login_attempts WHERE identity_hash = ?", (key,))
