@@ -57,3 +57,30 @@ def test_dashboard_has_login_and_user_management():
     assert "/api/auth/login" in html
     assert "createUser" in html
     assert "حالت امن" in html
+
+
+def test_news_feed_does_not_fabricate_live_news():
+    request, _ = make_user("viewer")
+    result = app_module.news_feed(request)
+    assert result["available"] is False
+    assert result["feed_status"] == "not_connected"
+    assert result["articles"] == []
+
+
+def test_analytics_overview_is_explicitly_unavailable_without_providers():
+    request, _ = make_user("viewer")
+    result = app_module.analytics_overview(request)
+    assert result["available"] is False
+    assert result["market_data_status"] == "not_connected"
+    assert result["trade_history_status"] == "not_connected"
+    assert result["fear_greed"]["score"] is None
+    assert result["market_heatmap"] == []
+    assert result["signal_performance"]["win_rate_pct"] is None
+
+
+def test_dashboard_contains_analytics_page_and_localized_navigation():
+    html = app_module.dashboard()
+    assert 'id="page-performance"' in html
+    assert 'id="fear-greed-score"' in html
+    assert 'id="symbol-ranking"' in html
+    assert "loadPerformance" in html
