@@ -13,7 +13,7 @@ python -m pip install -r requirements.txt
 uvicorn backend.app:app --host 127.0.0.1 --port 8000
 ```
 
-Open `http://127.0.0.1:8000`.
+Open `http://127.0.0.1:8000` for the public product website, then choose **ورود به پنل** or open `http://127.0.0.1:8000/app` directly for the authenticated trading workspace.\n\n## Installable mobile app (PWA)\n\nThe website includes a Progressive Web App manifest, app icon, service worker, offline shell, and an install prompt. Serve it over HTTPS (or localhost during development), open the site in Chrome/Edge on Android or desktop, then choose **Install app / Add to Home Screen**. Authenticated API responses are deliberately never cached; offline mode only provides the application shell, not live prices or account data.
 
 ## User security and roles
 
