@@ -10,6 +10,7 @@ from typing import Any
 
 SUPPORTED_LOCALES = ("fa", "en", "ar", "tr")
 REQUIRED_LOCALIZED_FIELDS = ("title", "summary", "analysis")
+NEWS_CATEGORIES = {"forex", "gold", "macro", "central_banks", "economic_calendar", "inflation", "employment", "analysis"}
 
 
 def _localized(value: Any, field: str) -> dict[str, str]:
@@ -37,12 +38,14 @@ def validate_news_article(article: dict[str, Any]) -> dict[str, Any]:
     if not article_id or not source or not url.startswith(("https://", "http://")):
         raise ValueError("article requires id, source and an http(s) url")
     published_at = article.get("published_at")
-    if not isinstance(published_at, datetime):
-        raise ValueError("published_at must be a datetime")
+    if not isinstance(published_at, datetime) or published_at.tzinfo is None or published_at.utcoffset() is None:
+        raise ValueError("published_at must be a timezone-aware datetime")
     impact = str(article.get("impact", "medium")).lower()
     if impact not in {"high", "medium", "low"}:
         raise ValueError("impact must be high, medium or low")
-    category = str(article.get("category", "markets")).strip().lower()
+    category = str(article.get("category", "macro")).strip().lower()
+    if category not in NEWS_CATEGORIES:
+        raise ValueError("unsupported news category")
     sentiment = str(article.get("sentiment", "neutral")).lower()
     if sentiment not in {"positive", "neutral", "negative"}:
         raise ValueError("sentiment must be positive, neutral or negative")
@@ -59,7 +62,7 @@ def validate_news_article(article: dict[str, Any]) -> dict[str, Any]:
         "category": category,
         "impact": impact,
         "sentiment": sentiment,
-        "currencies": sorted({str(x).upper() for x in article.get("currencies", [])}),
+        "currencies": sorted({str(x).upper() for x in currencies}),
         "localized": localized,
         "available_locales": available,
     }
