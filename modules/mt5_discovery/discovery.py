@@ -59,3 +59,41 @@ def discover_symbol_spec(symbol: str, mt5=None):
         "volume_min":float(info.volume_min),"volume_max":float(info.volume_max),
         "volume_step":float(info.volume_step),
     }
+
+def discover_market_snapshot(symbol: str, *, timeframe: str="M15", bars: int=100, mt5=None):
+    """Read bid/ask, exact symbol contract metadata and CLOSED bars from the connected terminal."""
+    if mt5 is None:
+        try:
+            import MetaTrader5 as mt5
+        except ImportError as exc:
+            raise RuntimeError("MetaTrader5 package is required on the connected Windows terminal host") from exc
+    import datetime
+    import math
+    tf_names={"M1":"TIMEFRAME_M1","M5":"TIMEFRAME_M5","M15":"TIMEFRAME_M15",
+              "M30":"TIMEFRAME_M30","H1":"TIMEFRAME_H1","H4":"TIMEFRAME_H4","D1":"TIMEFRAME_D1"}
+    key=str(timeframe).upper()
+    if key not in tf_names: raise ValueError("unsupported timeframe")
+    if not 30<=int(bars)<=1000: raise ValueError("bars must be between 30 and 1000")
+    terminal=mt5.terminal_info()
+    if terminal is None or not bool(getattr(terminal,"connected",False)):
+        raise RuntimeError("MetaTrader terminal is not connected")
+    if not mt5.symbol_select(symbol,True):
+        raise RuntimeError(f"Could not select symbol {symbol}: {mt5.last_error()}")
+    tick=mt5.symbol_info_tick(symbol)
+    if tick is None or not math.isfinite(float(tick.bid)) or not math.isfinite(float(tick.ask)) or tick.bid<=0 or tick.ask<tick.bid:
+        raise RuntimeError(f"No valid bid/ask tick for {symbol}")
+    spec=discover_symbol_spec(symbol,mt5)
+    rates=mt5.copy_rates_from_pos(symbol,getattr(mt5,tf_names[key]),1,int(bars))
+    if rates is None or len(rates)<30:
+        raise RuntimeError(f"Insufficient closed bars for {symbol}: {mt5.last_error()}")
+    candles=[]
+    for row in rates:
+        stamp=datetime.datetime.fromtimestamp(int(row["time"]),datetime.timezone.utc).isoformat()
+        candles.append({"timestamp":stamp,"open":float(row["open"]),"high":float(row["high"]),
+                        "low":float(row["low"]),"close":float(row["close"]),
+                        "volume":float(row["tick_volume"])})
+    return {"terminal":discover_connected_terminal(mt5),"symbol":symbol,
+            "timeframe":key,"bid":float(tick.bid),"ask":float(tick.ask),
+            "spread_points":(float(tick.ask)-float(tick.bid))/spec["point"],
+            "broker":spec,"candles":candles,"source":"connected_mt5_terminal",
+            "bars_are_closed":True,"read_only":True}
