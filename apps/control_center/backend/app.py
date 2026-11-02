@@ -20,6 +20,8 @@ from modules.portfolio_risk_guard import (
     PortfolioSnapshot, Position as RiskPosition, TradeIntent as RiskTradeIntent,
     evaluate_portfolio,
 )
+from modules.erp_api.router import build_erp_router, default_ledger_path
+from modules.risk_state_store import PersistentRiskLedger
 
 app = FastAPI(title="Forex AI Hybrid Scalper", version="5.2.0")
 cfg = AppConfig()
@@ -119,6 +121,10 @@ def secrets_compare(left: str, right: str) -> bool:
 
 # Process-local latch. It starts active on every restart; execution remains disabled.
 _emergency_stop_active = True
+
+# Shared ERP risk ledger: all ERP risk APIs use this same durable store.
+ERP_LEDGER = PersistentRiskLedger(default_ledger_path())
+app.include_router(build_erp_router(require_role, ERP_LEDGER))
 
 
 @app.get("/api/health")
