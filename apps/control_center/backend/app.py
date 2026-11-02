@@ -941,7 +941,8 @@ function applyLanguage(locale){activeLocale=["fa","en","ar","tr"].includes(local
  document.querySelectorAll("[placeholder],[title],[aria-label]").forEach(el=>{for(const attr of ["placeholder","title","aria-label"]){if(!el.hasAttribute(attr))continue;const key="i18n"+attr[0].toUpperCase()+attr.slice(1);if(!el.dataset[key])el.dataset[key]=el.getAttribute(attr);el.setAttribute(attr,t(el.dataset[key]));}});
  const title=document.getElementById("page-title");if(title&&currentPage)title.textContent=t(pageTitles[currentPage]);const crumb=document.getElementById("crumb");if(crumb&&currentPage)crumb.textContent=t(pageTitles[currentPage]);try{localStorage.setItem("forexai-locale",activeLocale);}catch(e){} }
 function setLanguage(locale){applyLanguage(locale);if(currentUser){document.getElementById("role-label").textContent=t("نقش: ")+t(currentUser.role);refreshStatus();if(currentPage==="news")loadNews();if(currentPage==="performance")loadPerformance();if(currentPage==="users")loadUsers();}}
-let currentPage="overview";\nlet mt5BridgeRefreshTimer=null;
+let currentPage="overview";
+let mt5BridgeRefreshTimer=null;
 const pageTitles={performance:"عملکرد و نبض بازار",news:"اخبار بازار",overview:"داشبورد معاملاتی",signals:"سیگنال‌های معاملاتی","market-radar":"رادار بازار",backtest:"آزمایشگاه بک‌تست",sltp:"مدیریت هوشمند SL/TP",mt5:"اتصال زنده MT5",analysis:"تحلیل بازار",simulator:"شبیه‌ساز تصمیم",modules:"مرکز ربات‌ها",ftmo:"حساب‌های FTMO",users:"مدیریت کاربران"};
 let csrfToken='',currentUser=null;
 async function api(path,options={}){const headers=Object.assign({"X-UI-Language":activeLocale},options.headers||{});if(options.method&&options.method!=='GET')headers['X-CSRF-Token']=csrfToken;return fetch(path,Object.assign({credentials:'same-origin'},options,{headers}));}
