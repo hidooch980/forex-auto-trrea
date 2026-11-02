@@ -259,3 +259,7 @@ The ERP exposes:
 - `POST /api/erp/performance/closed-trade` — also updates matching cell outcome memory.
 
 Market-affect features include realized bar-range proxy, spread ratio, drawdown, loss streak, specialist disagreement and data-quality score. Labels (calm/uncertain/stressed/extreme) describe market/strategy conditions, not a trader's actual mental or emotional state. Extreme stress forces HOLD in the research decision chain. No psychological diagnosis is made.
+
+## Release and finalization gate
+
+See [`docs/FINALIZATION_CHECKLIST.md`](docs/FINALIZATION_CHECKLIST.md) for verified implementation scope and mandatory blockers before production/live use. The project remains a tested development scaffold; live execution is disabled.
