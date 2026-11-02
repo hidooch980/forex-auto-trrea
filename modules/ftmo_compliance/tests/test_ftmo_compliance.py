@@ -23,9 +23,9 @@ def test_two_step_uses_five_percent_daily_and_static_ten_percent_max_loss():
 
 def test_one_step_uses_three_percent_daily_and_eod_trailing_max_loss():
     result = evaluate_account("1_step", "challenge",
-        base(equity=97000, highest_eod_balance=110000))
+        base(equity=96999, highest_eod_balance=100000))
     assert result["violations"] == ["MAX_DAILY_LOSS"]
-    assert result["maximum_loss_floor"] == 100000
+    assert result["maximum_loss_floor"] == 90000
 
 
 def test_instant_uses_three_percent_daily_and_closed_balance_trailing_floor():
