@@ -87,7 +87,7 @@ def create_user(payload: CreateUserPayload, request: Request):
     try:
         user = auth.add_user(payload.username, payload.password, payload.role)
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+        raise HTTPException(status_code=400, detail=translate(str(exc), request.headers.get("x-ui-language"))) from exc
     return {"ok": True, "user": user}
 
 @app.patch("/api/users/{user_id}/active")
