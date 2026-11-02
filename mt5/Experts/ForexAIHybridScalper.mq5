@@ -190,6 +190,67 @@ string DealEntryText(const long value)
    return "OTHER";
 }
 
+
+string DealReasonText(const long value)
+{
+   if(value == DEAL_REASON_CLIENT) return "CLIENT_MANUAL";
+   if(value == DEAL_REASON_MOBILE) return "MOBILE_MANUAL";
+   if(value == DEAL_REASON_WEB) return "WEB_MANUAL";
+   if(value == DEAL_REASON_EXPERT) return "EXPERT_ADVISOR";
+   if(value == DEAL_REASON_SL) return "STOP_LOSS";
+   if(value == DEAL_REASON_TP) return "TAKE_PROFIT";
+   if(value == DEAL_REASON_SO) return "STOP_OUT_MARGIN";
+   if(value == DEAL_REASON_ROLLOVER) return "ROLLOVER";
+   if(value == DEAL_REASON_VMARGIN) return "VARIATION_MARGIN";
+   if(value == DEAL_REASON_SPLIT) return "CORPORATE_SPLIT";
+   return "OTHER_OR_UNKNOWN";
+}
+
+string LossReasonText(const long reason, const double net_result, const long entry)
+{
+   if(entry != DEAL_ENTRY_OUT && entry != DEAL_ENTRY_OUT_BY && entry != DEAL_ENTRY_INOUT)
+      return "NOT_AN_EXIT";
+   if(net_result >= 0.0) return "NOT_A_LOSS";
+   if(reason == DEAL_REASON_SL) return "STOP_LOSS_TRIGGERED";
+   if(reason == DEAL_REASON_SO) return "MARGIN_STOP_OUT";
+   if(reason == DEAL_REASON_CLIENT || reason == DEAL_REASON_MOBILE || reason == DEAL_REASON_WEB)
+      return "MANUAL_CLOSE_AT_LOSS";
+   if(reason == DEAL_REASON_EXPERT) return "EA_CLOSED_AT_LOSS";
+   if(reason == DEAL_REASON_ROLLOVER) return "ROLLOVER_ADJUSTMENT";
+   return "LOSS_OTHER_OR_UNATTRIBUTED";
+}
+
+string PositionMetaKey(const ulong position_id, const string field)
+{
+   return StringFormat("FAI.POS.%I64u.%s", position_id, field);
+}
+
+void SaveEntryMeta(const ulong position_id, const string symbol)
+{
+   string prefix = "FAI." + symbol + ".";
+   double value = 0.0;
+   if(ReadGV(prefix + "CONFIDENCE", value))
+      GlobalVariableSet(PositionMetaKey(position_id, "CONF"), value);
+   if(ReadGV(prefix + "ACTION", value))
+      GlobalVariableSet(PositionMetaKey(position_id, "ACTION"), value);
+   if(ReadGV(prefix + "SL_POINTS", value))
+      GlobalVariableSet(PositionMetaKey(position_id, "SLPTS"), value);
+   MqlTick tick;
+   double point = SymbolInfoDouble(symbol, SYMBOL_POINT);
+   if(point > 0.0 && SymbolInfoTick(symbol, tick) && tick.ask > tick.bid)
+      GlobalVariableSet(PositionMetaKey(position_id, "SPREAD"), (tick.ask-tick.bid)/point);
+}
+
+double PositionMeta(const ulong position_id, const string field)
+{
+   double value = 0.0;
+   if(GlobalVariableCheck(PositionMetaKey(position_id, field)))
+      value = GlobalVariableGet(PositionMetaKey(position_id, field));
+   else
+      value = -1.0;
+   return value;
+}
+
 void JournalDeal(const ulong deal_ticket)
 {
    if(deal_ticket == 0 || !HistoryDealSelect(deal_ticket))
@@ -210,6 +271,16 @@ void JournalDeal(const ulong deal_ticket)
    double swap = HistoryDealGetDouble(deal_ticket, DEAL_SWAP);
    double fee = HistoryDealGetDouble(deal_ticket, DEAL_FEE);
    string comment = HistoryDealGetString(deal_ticket, DEAL_COMMENT);
+   long deal_reason = HistoryDealGetInteger(deal_ticket, DEAL_REASON);
+   double net_result = profit + commission + swap + fee;
+   double entry_confidence = -1.0, entry_action = -1.0, entry_sl_points = -1.0, entry_spread = -1.0;
+
+   if(deal_entry == DEAL_ENTRY_IN)
+      SaveEntryMeta(position_id, symbol);
+   entry_confidence = PositionMeta(position_id, "CONF");
+   entry_action = PositionMeta(position_id, "ACTION");
+   entry_sl_points = PositionMeta(position_id, "SLPTS");
+   entry_spread = PositionMeta(position_id, "SPREAD");
 
    int digits = (int)SymbolInfoInteger(symbol, SYMBOL_DIGITS);
    int handle = FileOpen(InpJournalFile,
@@ -224,7 +295,9 @@ void JournalDeal(const ulong deal_ticket)
       FileWrite(handle, "time_server", "deal_ticket", "position_id", "symbol",
                 "deal_type", "deal_entry", "volume", "price", "profit",
                 "commission", "swap", "fee", "net_result", "balance",
-                "equity", "magic", "comment");
+                "equity", "magic", "deal_reason", "loss_reason",
+                "entry_confidence", "entry_action", "entry_sl_points",
+                "entry_spread_points", "comment");
 
    FileSeek(handle, 0, SEEK_END);
    FileWrite(handle, TimeToString(deal_time, TIME_DATE|TIME_SECONDS),
@@ -233,10 +306,15 @@ void JournalDeal(const ulong deal_ticket)
              DoubleToString(volume, 4), DoubleToString(price, digits),
              DoubleToString(profit, 2), DoubleToString(commission, 2),
              DoubleToString(swap, 2), DoubleToString(fee, 2),
-             DoubleToString(profit + commission + swap + fee, 2),
+             DoubleToString(net_result, 2),
              DoubleToString(AccountInfoDouble(ACCOUNT_BALANCE), 2),
              DoubleToString(AccountInfoDouble(ACCOUNT_EQUITY), 2),
-             (string)magic, comment);
+             (string)magic, DealReasonText(deal_reason),
+             LossReasonText(deal_reason, net_result, deal_entry),
+             DoubleToString(entry_confidence, 4),
+             (entry_action < 0.0 ? "NA" : (entry_action > 0.0 ? "BUY" : "SELL")),
+             DoubleToString(entry_sl_points, 1),
+             DoubleToString(entry_spread, 1), comment);
    FileClose(handle);
    PrintFormat("Trade journal: recorded deal %I64u (%s %s)",
                deal_ticket, symbol, DealEntryText(deal_entry));
