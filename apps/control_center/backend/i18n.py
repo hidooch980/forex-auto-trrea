@@ -121,17 +121,17 @@ CATALOG = {
     "پیش‌نمایش غیرزنده": {"en": "Non-live preview", "ar": "معاينة غير مباشرة", "tr": "Canlı olmayan önizleme"},
     "پیش‌نمایش در دسترس نیست: ": {"en": "Preview unavailable: ", "ar": "المعاينة غير متاحة: ", "tr": "Önizleme kullanılamıyor: "},
 
-    "admin": {"en": "Administrator", "ar": "مسؤول", "tr": "Yönetici"},
-    "trader": {"en": "Trader", "ar": "متداول", "tr": "Yatırımcı"},
-    "analyst": {"en": "Analyst", "ar": "محلل", "tr": "Analist"},
-    "viewer": {"en": "Viewer", "ar": "مشاهد", "tr": "Görüntüleyici"},
-    "Authentication required.": {"en": "Authentication required.", "ar": "يلزم تسجيل الدخول.", "tr": "Kimlik doğrulaması gerekli."},
-    "Insufficient role permissions.": {"en": "Your role does not have permission.", "ar": "لا تملك صلاحية كافية.", "tr": "Rolünüzün gerekli izni yok."},
-    "Invalid CSRF token.": {"en": "Invalid security token. Refresh and try again.", "ar": "رمز الأمان غير صالح. حدّث الصفحة وحاول مجدداً.", "tr": "Güvenlik belirteci geçersiz. Yenileyip tekrar deneyin."},
-    "Invalid username or password.": {"en": "Invalid username or password.", "ar": "اسم المستخدم أو كلمة المرور غير صحيحة.", "tr": "Kullanıcı adı veya şifre hatalı."},
-    "User not found.": {"en": "User not found.", "ar": "المستخدم غير موجود.", "tr": "Kullanıcı bulunamadı."},
-    "Administrators cannot deactivate their own account.": {"en": "Administrators cannot deactivate their own account.", "ar": "لا يمكن للمسؤول تعطيل حسابه بنفسه.", "tr": "Yöneticiler kendi hesaplarını devre dışı bırakamaz."},
-    "The last active administrator cannot be deactivated.": {"en": "The last active administrator cannot be deactivated.", "ar": "لا يمكن تعطيل آخر مسؤول نشط.", "tr": "Son etkin yönetici devre dışı bırakılamaz."},
+    "admin": {"fa": "مدیر", "en": "Administrator", "ar": "مسؤول", "tr": "Yönetici"},
+    "trader": {"fa": "معامله‌گر", "en": "Trader", "ar": "متداول", "tr": "Yatırımcı"},
+    "analyst": {"fa": "تحلیل‌گر", "en": "Analyst", "ar": "محلل", "tr": "Analist"},
+    "viewer": {"fa": "فقط مشاهده", "en": "Viewer", "ar": "مشاهد", "tr": "Görüntüleyici"},
+    "Authentication required.": {"fa": "برای ادامه وارد حساب کاربری شوید.", "en": "Authentication required.", "ar": "يلزم تسجيل الدخول.", "tr": "Kimlik doğrulaması gerekli."},
+    "Insufficient role permissions.": {"fa": "نقش کاربری شما اجازه انجام این عملیات را ندارد.", "en": "Your role does not have permission.", "ar": "لا تملك صلاحية كافية.", "tr": "Rolünüzün gerekli izni yok."},
+    "Invalid CSRF token.": {"fa": "توکن امنیتی معتبر نیست. صفحه را تازه‌سازی و دوباره تلاش کنید.", "en": "Invalid security token. Refresh and try again.", "ar": "رمز الأمان غير صالح. حدّث الصفحة وحاول مجدداً.", "tr": "Güvenlik belirteci geçersiz. Yenileyip tekrar deneyin."},
+    "Invalid username or password.": {"fa": "نام کاربری یا رمز عبور نادرست است.", "en": "Invalid username or password.", "ar": "اسم المستخدم أو كلمة المرور غير صحيحة.", "tr": "Kullanıcı adı veya şifre hatalı."},
+    "User not found.": {"fa": "کاربر پیدا نشد.", "en": "User not found.", "ar": "المستخدم غير موجود.", "tr": "Kullanıcı bulunamadı."},
+    "Administrators cannot deactivate their own account.": {"fa": "مدیر نمی‌تواند حساب خودش را غیرفعال کند.", "en": "Administrators cannot deactivate their own account.", "ar": "لا يمكن للمسؤول تعطيل حسابه بنفسه.", "tr": "Yöneticiler kendi hesaplarını devre dışı bırakamaz."},
+    "The last active administrator cannot be deactivated.": {"fa": "آخرین مدیر فعال را نمی‌توان غیرفعال کرد.", "en": "The last active administrator cannot be deactivated.", "ar": "لا يمكن تعطيل آخر مسؤول نشط.", "tr": "Son etkin yönetici devre dışı bırakılamaz."},
     "نامعتبر": {"en": "Invalid", "ar": "غير صالح", "tr": "Geçersiz"},
     "خبر": {"en": "News", "ar": "الأخبار", "tr": "Haberler"},
     "اخبار": {"en": "News", "ar": "الأخبار", "tr": "Haberler"},
@@ -167,11 +167,11 @@ CATALOG = {
     "فعال‌کردن": {"en": "Activate", "ar": "تفعيل", "tr": "Etkinleştir"},
     "مشاهده منبع": {"en": "View source", "ar": "عرض المصدر", "tr": "Kaynağı görüntüle"},
     "استراتژی: ": {"en": "Strategy: ", "ar": "الاستراتيجية: ", "tr": "Strateji: "},
-    "Username must be 3-64 letters, digits, '_' or '-'.": {"en": "Username must be 3-64 letters, digits, '_' or '-'.", "ar": "يجب أن يتكون اسم المستخدم من 3 إلى 64 حرفاً أو رقماً أو _ أو -.", "tr": "Kullanıcı adı 3-64 harf, rakam, '_' veya '-' içermelidir."},
-    "New accounts may be trader, analyst or viewer. Bootstrap admin separately.": {"en": "New accounts may be trader, analyst or viewer. Bootstrap admin separately.", "ar": "يمكن أن تكون الحسابات الجديدة متداولاً أو محللاً أو مشاهداً. أنشئ المسؤول الأول بشكل منفصل.", "tr": "Yeni hesaplar yatırımcı, analist veya görüntüleyici olabilir. Yönetici hesabını ayrı oluşturun."},
-    "Password must contain at least 14 characters.": {"en": "Password must contain at least 14 characters.", "ar": "يجب ألا تقل كلمة المرور عن 14 حرفاً.", "tr": "Şifre en az 14 karakter içermelidir."},
-    "Username already exists.": {"en": "Username already exists.", "ar": "اسم المستخدم موجود بالفعل.", "tr": "Kullanıcı adı zaten mevcut."},
-    "Symbol is not in the configured universe.": {"en": "Symbol is not in the configured universe.", "ar": "الرمز غير مدرج ضمن قائمة الأدوات المحددة.", "tr": "Sembol yapılandırılmış enstrüman listesinde değil."},
+    "Username must be 3-64 letters, digits, '_' or '-'.": {"fa": "نام کاربری باید ۳ تا ۶۴ نویسه و شامل حروف، اعداد، _ یا - باشد.", "en": "Username must be 3-64 letters, digits, '_' or '-'.", "ar": "يجب أن يتكون اسم المستخدم من 3 إلى 64 حرفاً أو رقماً أو _ أو -.", "tr": "Kullanıcı adı 3-64 harf, rakam, '_' veya '-' içermelidir."},
+    "New accounts may be trader, analyst or viewer. Bootstrap admin separately.": {"fa": "حساب جدید می‌تواند معامله‌گر، تحلیل‌گر یا فقط مشاهده باشد. مدیر اولیه جداگانه ایجاد می‌شود.", "en": "New accounts may be trader, analyst or viewer. Bootstrap admin separately.", "ar": "يمكن أن تكون الحسابات الجديدة متداولاً أو محللاً أو مشاهداً. أنشئ المسؤول الأول بشكل منفصل.", "tr": "Yeni hesaplar yatırımcı, analist veya görüntüleyici olabilir. Yönetici hesabını ayrı oluşturun."},
+    "Password must contain at least 14 characters.": {"fa": "رمز عبور باید حداقل ۱۴ نویسه داشته باشد.", "en": "Password must contain at least 14 characters.", "ar": "يجب ألا تقل كلمة المرور عن 14 حرفاً.", "tr": "Şifre en az 14 karakter içermelidir."},
+    "Username already exists.": {"fa": "این نام کاربری قبلاً ثبت شده است.", "en": "Username already exists.", "ar": "اسم المستخدم موجود بالفعل.", "tr": "Kullanıcı adı zaten mevcut."},
+    "Symbol is not in the configured universe.": {"fa": "این نماد در فهرست نمادهای مجاز پیکربندی نشده است.", "en": "Symbol is not in the configured universe.", "ar": "الرمز غير مدرج ضمن قائمة الأدوات المحددة.", "tr": "Sembol yapılandırılmış enstrüman listesinde değil."},
     "خبرهای تأییدشده": {"en": "Verified articles", "ar": "الأخبار الموثوقة", "tr": "Doğrulanmış haberler"},
     "تیتر": {"en": "Headline", "ar": "العنوان", "tr": "Başlık"},
     "تحلیل": {"en": "Analysis", "ar": "التحليل", "tr": "Analiz"},
@@ -198,8 +198,6 @@ def catalog_for_frontend() -> dict:
 
 def translate(text: str, locale: str | None = None) -> str:
     lang = normalize_locale(locale)
-    if lang == DEFAULT_LOCALE:
-        return text
     if text in CATALOG:
         return CATALOG[text].get(lang, text)
     source = ALIASES.get(lang, {}).get(text)
