@@ -22,6 +22,10 @@ from modules.portfolio_risk_guard import (
 )
 from modules.erp_api.router import build_erp_router, default_ledger_path
 from modules.risk_state_store import PersistentRiskLedger
+from modules.market_radar.api import build_market_radar_router
+from modules.backtest_lab.api import build_backtest_router
+from modules.sltp_engine.api import build_sltp_router
+from modules.mt5_web_bridge.api import build_mt5_bridge_router
 
 app = FastAPI(title="Forex AI Hybrid Scalper", version="5.2.0")
 cfg = AppConfig()
@@ -125,6 +129,10 @@ _emergency_stop_active = True
 # Shared ERP risk ledger: all ERP risk APIs use this same durable store.
 ERP_LEDGER = PersistentRiskLedger(default_ledger_path())
 app.include_router(build_erp_router(require_role, ERP_LEDGER))
+app.include_router(build_market_radar_router(require_role))
+app.include_router(build_backtest_router(require_role))
+app.include_router(build_sltp_router(require_role))
+app.include_router(build_mt5_bridge_router(require_role))
 
 
 @app.get("/api/health")
@@ -193,6 +201,45 @@ def change_user_active(user_id: int, active: bool, request: Request):
     if not changed:
         raise HTTPException(status_code=404, detail=translate("User not found.", request.headers.get("x-ui-language")))
     return {"ok": True, "user_id": user_id, "active": active}
+
+@app.get("/api/bots/status")
+def bots_status(request: Request):
+    user, _ = current_session(request)
+    is_admin = user["role"] == "admin"
+    return {
+        "execution_allowed": False,
+        "bots": [
+            {
+                "id": "signals",
+                "name": "Signal Bot",
+                "state": "research_only",
+                "engine_available": True,
+                "market_data_connected": False,
+                "endpoint": "/api/market-radar/analyze",
+                "execution_allowed": False,
+            },
+            {
+                "id": "manager",
+                "name": "Risk Manager Bot",
+                "state": "risk_preview_only",
+                "engine_available": True,
+                "live_positions_connected": False,
+                "endpoint": "/api/risk/portfolio-preview",
+                "emergency_stop": _emergency_stop_active,
+                "execution_allowed": False,
+            },
+            {
+                "id": "users",
+                "name": "User Management Bot",
+                "state": "admin_controlled" if is_admin else "admin_only",
+                "available": is_admin,
+                "user_count": len(auth.list_users()) if is_admin else None,
+                "endpoint": "/api/users" if is_admin else None,
+                "execution_allowed": False,
+            },
+        ],
+    }
+
 
 @app.get("/api/ftmo/products")
 def ftmo_products(request: Request):
@@ -448,7 +495,7 @@ APP_ICON = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
 <path d="M145 358V154h125c66 0 102 34 102 91 0 42-21 70-59 83l67 30h-94l-54-26h-5v26zm82-96h42c23 0 35-7 35-19s-12-19-35-19h-42z" fill="#071522"/>
 </svg>"""
 
-SERVICE_WORKER = """const CACHE = "forex-ai-shell-v1";
+SERVICE_WORKER = """const CACHE = "forex-ai-shell-v2";
 const SHELL = ["/", "/app", "/manifest.webmanifest", "/app-icon.svg", "/offline"];
 self.addEventListener("install", event => {
   event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(SHELL)).then(() => self.skipWaiting()));
@@ -488,10 +535,57 @@ SITE_HTML = r"""<!doctype html>
 :root{color-scheme:dark;--bg:#090e1b;--panel:#111a2b;--line:#243149;--text:#edf2fb;--muted:#9aa9bf;--green:#37d6a0;--blue:#7c9cff}
 *{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 75% 5%,#203653 0,transparent 38%),var(--bg);color:var(--text);font:15px/1.8 Tahoma,system-ui,sans-serif}a{color:inherit;text-decoration:none}.wrap{width:min(1160px,calc(100% - 36px));margin:auto}.nav{height:78px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #ffffff16}.brand{display:flex;align-items:center;gap:12px;font-weight:900;letter-spacing:.5px}.logo{width:42px;height:42px;border-radius:14px;background:linear-gradient(135deg,#39d6a2,#4d83e8);display:grid;place-items:center;color:#071522;font-size:22px}.navlinks{display:flex;gap:22px;color:var(--muted);font-size:13px}.actions{display:flex;gap:10px;align-items:center}.btn{display:inline-flex;align-items:center;justify-content:center;border:1px solid #ffffff25;border-radius:12px;padding:10px 17px;font-weight:700}.btn.primary{background:linear-gradient(120deg,#37d6a0,#69a5ff);border:0;color:#071522}.hero{padding:92px 0 72px;display:grid;grid-template-columns:1.05fr .95fr;gap:55px;align-items:center}.tag{display:inline-flex;border:1px solid #37d6a055;background:#37d6a012;color:#70e8be;border-radius:30px;padding:5px 12px;font-size:12px}.hero h1{font-size:clamp(34px,5vw,58px);line-height:1.3;margin:20px 0}.hero p{color:var(--muted);max-width:620px;font-size:17px}.hero-actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:27px}.visual{border:1px solid #ffffff20;border-radius:24px;padding:18px;background:linear-gradient(150deg,#15263b,#111a2b);box-shadow:0 28px 80px #0006}.visual-top{display:flex;justify-content:space-between;color:var(--muted);font-size:12px}.chart{height:230px;width:100%;margin-top:15px}.chart svg{width:100%;height:100%}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:15px}.stat{background:#ffffff08;border:1px solid #ffffff12;border-radius:12px;padding:12px}.stat small{color:var(--muted);display:block}.stat b{font-size:18px}.section{padding:60px 0}.section h2{font-size:30px;margin:0 0 8px}.lead{color:var(--muted);margin:0 0 25px}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:15px}.feature{background:var(--panel);border:1px solid var(--line);border-radius:17px;padding:22px}.feature .ico{font-size:23px;color:var(--green)}.feature h3{margin:8px 0}.feature p{color:var(--muted);font-size:13px;margin:0}.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}.step{padding:20px;border-inline-start:2px solid var(--green);background:#ffffff08;border-radius:12px}.step b{display:block;font-size:17px}.step span{color:var(--muted);font-size:13px}.notice{margin:35px 0;background:#d7a94c12;border:1px solid #d7a94c44;border-radius:14px;padding:17px;color:#e9d5a6;font-size:13px}.footer{border-top:1px solid #ffffff18;padding:25px 0;color:var(--muted);font-size:12px;display:flex;justify-content:space-between;gap:15px;flex-wrap:wrap}
 @media(max-width:800px){.navlinks{display:none}.hero{grid-template-columns:1fr;padding:55px 0 35px;gap:30px}.grid{grid-template-columns:1fr 1fr}.steps{grid-template-columns:1fr}.hero h1{font-size:38px}}@media(max-width:520px){.grid{grid-template-columns:1fr}.nav{height:68px}.nav .btn{padding:8px 11px;font-size:12px}.stats{grid-template-columns:1fr 1fr 1fr}.stat b{font-size:15px}}
+
+.bot-grid{grid-template-columns:repeat(auto-fit,minmax(245px,1fr));margin-top:14px}.bot-card{display:flex;flex-direction:column;gap:12px;min-height:265px}.bot-card h3{margin:0;font-size:17px}.bot-card p{color:var(--muted);font-size:12px;line-height:1.9;margin:0;min-height:64px}.bot-card-head{display:flex;align-items:center;justify-content:space-between}.bot-facts{display:grid;gap:7px;padding:12px;border:1px solid #ffffff12;border-radius:12px;background:#07132255;font-size:11px;color:var(--muted);margin-top:auto}.bot-facts b{color:var(--text)}.bot-card button{margin-top:3px}.bot-restricted{opacity:.72}
+/* Secure control-center visual system refresh */
+:root{--bg:#080f1d;--panel:#101b2d;--panel2:#15243a;--line:#263a54;--text:#eff5ff;--muted:#9aabc2;--green:#36d9a4;--blue:#79a7ff;--red:#ff6f7d;--shadow:0 18px 55px #02081766}
+body{background:radial-gradient(ellipse at 78% -8%,#1d4260 0,transparent 36%),radial-gradient(ellipse at 5% 35%,#17334a55 0,transparent 32%),var(--bg)}
+.card{border:1px solid color-mix(in srgb,var(--line) 86%,transparent);border-radius:19px;box-shadow:0 10px 30px #02081722;transition:border-color .2s,transform .2s,box-shadow .2s}
+.card:hover{border-color:#3b5878;box-shadow:var(--shadow)}
+.sidebar{background:linear-gradient(180deg,#0d192a,#0a1423);border-inline-end:1px solid #ffffff12}
+.brand .logo{box-shadow:0 7px 24px #39d6a233}
+.nav button{border:1px solid transparent;border-radius:12px;transition:background .18s,border-color .18s,color .18s}
+.nav button:hover{background:#1a2b42;border-color:#ffffff12}.nav button.active{background:linear-gradient(100deg,#1d594e66,#274a7555);border-color:#3bd8a355;color:#eafff7;box-shadow:inset 3px 0 0 var(--green)}
+.topbar{backdrop-filter:blur(16px);background:#0a1424d9;border-bottom:1px solid #ffffff12}
+.hero{border:1px solid #3bd8a333;background:radial-gradient(circle at 85% 15%,#36d9a41c,transparent 35%),linear-gradient(120deg,#142b3c,#17243c 65%,#1c2d48);border-radius:22px;box-shadow:var(--shadow)}
+.metric-value{letter-spacing:-.04em;font-variant-numeric:tabular-nums}.metric-icon{border:1px solid #ffffff14;border-radius:12px;background:#ffffff08}
+.field{border:1px solid #334963;background:#0b1728;color:var(--text);border-radius:12px;min-height:44px;transition:border-color .2s,box-shadow .2s}.field:focus{outline:none;border-color:var(--green);box-shadow:0 0 0 3px #36d9a422}
+button.primary{border:1px solid #54e0b5;background:linear-gradient(110deg,#1aa982,#168b91);border-radius:12px;box-shadow:0 8px 22px #159d7a33;font-weight:800}button.primary:hover{filter:brightness(1.08);transform:translateY(-1px)}button:disabled{opacity:.58;cursor:wait;transform:none!important}
+.pill{border:1px solid #ffffff16;background:#ffffff08;border-radius:999px;padding:5px 10px}.pill.ok{border-color:#36d9a455;background:#36d9a414;color:#7ce8c2}
+.login-wrap{width:min(480px,calc(100% - 32px));max-width:none;margin:7vh auto 4vh;position:relative}
+.login-wrap:before{content:"";position:absolute;inset:-55px -70px;z-index:-1;background:radial-gradient(ellipse,#1b536044,transparent 68%);filter:blur(18px);pointer-events:none}
+.login-brand{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:22px}.login-secure{font-size:11px;color:var(--muted);display:flex;align-items:center;gap:7px}.login-secure i{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 12px #36d9a4}
+.login-card{padding:clamp(22px,5vw,34px);border-radius:23px;background:linear-gradient(150deg,#15243a,#0f1a2c 65%);box-shadow:0 28px 80px #02081788;border-color:#40577788}
+.login-topline{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:22px}.login-topline .field{width:auto;min-width:110px;padding:7px 10px}.login-card h2{font-size:25px;letter-spacing:-.5px;margin:0 0 7px}.login-card>p{color:var(--muted);font-size:13px;margin:0 0 24px}.login-label{display:block;color:#c5d2e5;font-size:12px;font-weight:700;margin:14px 0 7px}.login-card .field{width:100%;padding:12px 14px}.login-submit{width:100%;display:flex;align-items:center;justify-content:space-between;padding:13px 16px;margin-top:20px}.login-message{min-height:26px;margin-top:12px;color:var(--muted)}.login-message:not(:empty){font-size:12px}.login-foot{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;border-top:1px solid #ffffff14;margin-top:20px;padding-top:15px;color:var(--muted);font-size:10px}.login-foot span:first-child{color:#7ce8c2}.login-caption{text-align:center;color:#8294ad;font-size:11px;margin:17px 0}
+@media(max-width:760px){.shell{display:block}.sidebar{position:relative;width:100%;height:auto}.nav{display:flex;overflow-x:auto;gap:7px;padding-bottom:9px}.nav button{white-space:nowrap;min-width:max-content}.side-bottom{display:none}main{padding:12px}.topbar{position:relative;gap:12px;flex-wrap:wrap}.top-actions{width:100%;flex-wrap:wrap}.login-wrap{margin:5vh auto 3vh}.hero{padding:20px}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
+
+/* Landing page v2: clearer hierarchy, responsive navigation and polished feature surfaces */
+.nav{position:relative;z-index:5;backdrop-filter:blur(14px)}
+.navlinks a{padding:8px 2px;transition:color .2s}
+.navlinks a:hover{color:var(--green)}
+.btn{transition:transform .2s,filter .2s,border-color .2s}
+.btn:hover{transform:translateY(-2px);filter:brightness(1.08);border-color:#6ce8c2}
+.hero{min-height:500px}
+.hero>div:first-child{position:relative;z-index:1}
+.hero .tag{box-shadow:0 0 28px #37d6a022}
+.visual{position:relative;overflow:hidden}
+.visual:before{content:"";position:absolute;inset:-70% -40%;background:linear-gradient(110deg,transparent 43%,#ffffff0b 50%,transparent 57%);transform:translateX(-50%);animation:landingShimmer 10s ease-in-out infinite;pointer-events:none}
+.visual>*{position:relative;z-index:1}
+.feature{position:relative;overflow:hidden;transition:transform .22s,border-color .22s,box-shadow .22s}
+.feature:after{content:"";position:absolute;inset:auto 0 0;height:2px;background:linear-gradient(90deg,transparent,var(--green),var(--blue),transparent);opacity:.0;transition:opacity .2s}
+.feature:hover{transform:translateY(-4px);border-color:#4e7898;box-shadow:0 18px 42px #02081766}
+.feature:hover:after{opacity:1}
+.feature .ico{width:42px;height:42px;display:grid;place-items:center;border-radius:13px;background:#37d6a014;border:1px solid #37d6a033}
+.section{scroll-margin-top:24px}
+.step{transition:transform .2s,border-color .2s}.step:hover{transform:translateY(-3px);border-color:#37d6a0}
+@keyframes landingShimmer{0%,100%{transform:translateX(-50%)}50%{transform:translateX(50%)}}
+@media(max-width:800px){.hero{min-height:0}.visual{max-width:620px;width:100%;margin-inline:auto}}
+@media(prefers-reduced-motion:reduce){.visual:before{animation:none}.feature,.step,.btn{transition:none}}
 </style></head><body>
 <header class="wrap nav"><a class="brand" href="/"><span class="logo">F</span><span>FOREX AI<small style="display:block;color:#9aa9bf;font-size:9px;letter-spacing:2px">HYBRID SCALPER</small></span></a>
 <nav class="navlinks"><a href="#features">امکانات</a><a href="#ftmo">مدیریت FTMO</a><a href="#how">نحوه استفاده</a></nav>
-<div class="actions"><button class="btn" id="install" hidden>نصب اپلیکیشن</button><a class="btn primary" href="/app">ورود به پنل</a></div></header>
+<div class="actions"><button class="btn" id="install" hidden>نصب اپلیکیشن</button><a class="btn primary" href="/app" aria-label="ورود کاربران">ورود کاربران</a></div></header>
 <main class="wrap"><section class="hero"><div><span class="tag">● پلتفرم تحلیل و مدیریت ریسک</span><h1>معامله‌گری هوشمند،<br><span style="color:#6fe5b8">با کنترل ریسک در اولویت</span></h1><p>یک فضای کاری یکپارچه برای تحلیل بازار، بررسی سیگنال‌ها، مدیریت حساب‌های FTMO و پایش عملکرد؛ با نمایش شفاف وضعیت اتصال داده‌ها و کنترل‌های ایمنی.</p><div class="hero-actions"><a class="btn primary" href="/app">ورود به داشبورد</a><a class="btn" href="#features">مشاهده امکانات</a></div></div>
 <div class="visual"><div class="visual-top"><span>FOREX AI · MARKET WORKSPACE</span><span style="color:#e9bd68">SAFE MODE</span></div><div class="chart"><svg viewBox="0 0 600 250" preserveAspectRatio="none" aria-label="نمودار تزئینی"><defs><linearGradient id="fill" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#37d6a0" stop-opacity=".35"/><stop offset="1" stop-color="#37d6a0" stop-opacity="0"/></linearGradient></defs><path d="M0 190 L45 172 85 180 130 130 170 150 215 105 255 126 300 80 345 105 390 70 430 95 475 45 520 65 560 25 600 40 L600 250 L0 250Z" fill="url(#fill)"/><path d="M0 190 L45 172 85 180 130 130 170 150 215 105 255 126 300 80 345 105 390 70 430 95 475 45 520 65 560 25 600 40" fill="none" stroke="#37d6a0" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="stats"><div class="stat"><small>حساب‌های FTMO</small><b>چندگانه</b></div><div class="stat"><small>مدیریت ریسک</small><b>قانون‌محور</b></div><div class="stat"><small>اجرای زنده</small><b style="color:#e9bd68">خاموش</b></div></div></div></section>
 <section class="section" id="features"><h2>ابزارهای یکپارچه</h2><p class="lead">همه‌چیز در یک پنل، با وضعیت واقعی و بدون اعداد ساختگی.</p><div class="grid">
@@ -544,7 +638,31 @@ main{min-width:0;padding:25px clamp(14px,3vw,38px) 42px;max-width:1600px;width:1
 .modules{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:14px}.module{padding:13px;border:1px solid var(--line);background:var(--panel);border-radius:13px}.module b{display:block;font-size:12px}.module small{color:var(--muted);font-size:10px}
 .actions{display:flex;gap:9px;flex-wrap:wrap;align-items:center}.primary{background:linear-gradient(135deg,#21bd8d,#178b77);border:0;color:#041b19;padding:10px 16px;border-radius:10px;font-weight:800}.danger{background:#a83243;color:#fff;border:0;padding:10px 15px;border-radius:10px;font-weight:800}.field{background:var(--panel2);border:1px solid var(--line);border-radius:10px;color:var(--text);padding:10px 12px;min-width:0}
 .notice{background:#e9b74b12;border:1px solid #e9b74b35;color:var(--gold);padding:12px 14px;border-radius:12px;font-size:11px;margin-top:14px}
-.page{display:none}.page.active{display:block}.login-wrap{max-width:420px;margin:8vh auto}.login-card{padding:26px}.login-card h2{margin:0 0 6px}.login-card p{color:var(--muted);font-size:12px;margin:0 0 20px}.login-card input{width:100%;margin:6px 0}.login-card button{width:100%;margin-top:10px}.status{margin-top:10px;color:var(--muted);font-size:12px;min-height:20px}
+.page{display:none}.page.active{display:block}
+.login-wrap{min-height:100vh;display:grid;place-items:center;padding:34px 22px;background:radial-gradient(ellipse at 18% 50%,#08b9b522,transparent 35%),radial-gradient(ellipse at 80% 20%,#315ce833,transparent 38%),#070d1b}
+.login-layout{width:min(100%,1040px);min-height:590px;display:grid;grid-template-columns:minmax(340px,.92fr) minmax(0,1.08fr);overflow:hidden;border:1px solid #6685b866;border-radius:24px;background:#0b1428;box-shadow:0 28px 90px #0009}
+.login-panel{padding:clamp(24px,4vw,48px);display:flex;flex-direction:column;justify-content:center;background:radial-gradient(ellipse at 20% 18%,#04b9ae35,transparent 42%),linear-gradient(145deg,#101a33,#090f20 72%);min-width:0}
+.login-brand{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:34px}
+.login-secure{font-size:11px;color:#8ee9d4;white-space:nowrap}.login-secure i{display:inline-block;width:7px;height:7px;border-radius:50%;background:#42efbd;margin-inline-end:6px;box-shadow:0 0 12px #42efbd}
+.login-card{padding:0;border:0;background:transparent;box-shadow:none}
+.login-topline{display:flex;justify-content:space-between;align-items:center;gap:10px}.login-topline .field{width:auto;padding:6px 9px;font-size:11px}
+.login-card h2{font-size:clamp(22px,3vw,30px);margin:16px 0 6px;color:#f5f8ff}
+.login-card p{color:#a8b7d1;font-size:12px;margin:0 0 25px}
+.login-label{display:block;color:#dce6f7;font-size:12px;margin:14px 0 5px}
+.login-card input{width:100%;margin:0;background:#f4f7fc;color:#15213a;border:1px solid #c5d1e5;border-radius:9px;padding:12px 13px;min-height:44px}
+.login-card input:focus{outline:2px solid #38cde0;outline-offset:2px}
+.login-card button{width:100%;margin-top:22px;min-height:46px;background:linear-gradient(100deg,#1547ed,#245ff8);color:#fff;border-radius:10px;box-shadow:0 8px 24px #164cf655}
+.login-card button:disabled{opacity:.65;cursor:wait}
+.login-message{color:#bdcbe0;min-height:24px}
+.login-foot{display:flex;flex-wrap:wrap;gap:8px 18px;margin-top:20px;color:#8fa5c5;font-size:10px}
+.login-caption{margin:18px 0 0;color:#91a4c3;text-align:center;font-size:11px}
+.login-art{position:relative;display:grid;place-items:center;overflow:hidden;min-height:100%;background:radial-gradient(ellipse at 52% 48%,#0755d8aa,transparent 35%),radial-gradient(ellipse at 70% 75%,#02b8ba44,transparent 35%),linear-gradient(145deg,#101d3a,#07132b 70%);border-inline-start:1px solid #5575a755}
+.login-art:before,.login-art:after{content:"";position:absolute;inset:10%;border:1px solid #4b91f533;border-radius:50%;transform:rotate(-28deg) scaleY(.62);box-shadow:0 0 0 34px #3684e20a,0 0 0 68px #3684e208,0 0 65px #078cf044}
+.login-art:after{inset:19%;transform:rotate(34deg) scaleY(.55);border-color:#00d8d055}
+.login-art svg{position:relative;z-index:1;width:min(72%,390px);height:auto;filter:drop-shadow(0 0 34px #04baff88)}
+.status{margin-top:10px;color:var(--muted);font-size:12px;min-height:20px}
+@media(max-width:900px){.login-wrap{padding:16px;min-height:100svh}.login-layout{grid-template-columns:minmax(0,1fr);min-height:0;width:min(100%,520px)}.login-panel{grid-row:1;padding:clamp(22px,5vw,30px)}.login-art{grid-row:2;min-height:135px;border-inline-start:0;border-top:1px solid #5575a755}.login-art svg{width:118px}.login-art:before{inset:2% 16%}.login-art:after{inset:12% 24%}.login-brand{margin-bottom:20px}.login-caption{margin-bottom:2px}.login-card h2{font-size:24px}.login-card p{font-size:12px}}
+@media(prefers-reduced-motion:reduce){.login-art *{animation:none!important}}
 .user-row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid var(--line)}.user-row:last-child{border:0}
 footer{color:var(--muted);font-size:10px;margin-top:18px;line-height:1.9}
 @media(max-width:1050px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}.content-grid{grid-template-columns:1fr}}
@@ -601,15 +719,59 @@ html[dir=rtl] .nav button:hover{transform:translateX(-3px)}html[dir=ltr] .nav bu
 @media(max-width:700px){.nav button.active{box-shadow:inset 0 -3px #54e2c0}.nav button:hover{transform:none}.card:hover,.ticker:hover,.module:hover{transform:none}}
 
 .table-wrap{width:100%;overflow-x:auto;margin-top:12px}.data-table{width:100%;border-collapse:collapse;min-width:620px;text-align:start}.data-table th,.data-table td{padding:11px 13px;border-bottom:1px solid var(--line);white-space:nowrap}.data-table th{color:var(--muted);font-size:11px;font-weight:700}.data-table td{font-size:12px}.data-table tbody tr:hover{background:var(--panel2)}
+
+/* Dashboard home v2: stronger overview hierarchy and practical responsive spacing */
+#page-overview>.hero{min-height:142px;padding:25px 28px}
+#page-overview>.hero h2{font-size:clamp(19px,2.2vw,25px);letter-spacing:-.3px}
+#page-overview>.grid>.card{position:relative;overflow:hidden;min-height:132px}
+#page-overview>.grid>.card:after{content:"";position:absolute;inset:auto 0 0;height:2px;background:linear-gradient(90deg,transparent,#42efbd88,#8ba7ff88,transparent)}
+#page-overview .content-grid>.card{min-height:300px}
+#page-overview .section-head h3{font-size:15px;letter-spacing:-.2px}
+#page-overview .chart-wrap{height:225px}
+#page-overview .notice{line-height:1.9}
+#page-overview>.card:last-child{background:linear-gradient(145deg,var(--panel),color-mix(in srgb,var(--panel) 90%,#9d5365 10%))}
+#page-overview>.card:last-child .section-head{margin-bottom:10px}
+#page-overview .actions button{min-height:42px}
+@media(max-width:700px){
+ #page-overview>.hero{min-height:0;padding:18px}
+ #page-overview>.grid>.card{min-height:120px}
+ #page-overview .content-grid>.card{min-height:0}
+ #page-overview .chart-wrap{height:175px}
+ #page-overview>.card:last-child .actions{display:grid;grid-template-columns:1fr}
+ #page-overview>.card:last-child .actions button{width:100%}
+}
 </style>
 </head>
 <body>
 <section id="login-screen" class="login-wrap">
- <div class="brand" style="margin-bottom:18px"><div class="logo">F</div><div><strong>FOREX AI</strong><small>HYBRID SCALPER</small></div></div>
- <div class="card login-card"><div style="display:flex;justify-content:flex-end;margin-bottom:12px"><select id="login-language" class="field" aria-label="Language" onchange="setLanguage(this.value)"><option value="fa">فارسی</option><option value="en">English</option><option value="ar">العربية</option><option value="tr">Türkçe</option></select></div><h2>به مرکز معاملات خوش آمدید</h2><p>برای ورود به فضای کاری امن، اطلاعات حساب خود را وارد کنید.</p>
- <input class="field" id="login-user" autocomplete="username" placeholder="نام کاربری">
- <input class="field" id="login-pass" type="password" autocomplete="current-password" placeholder="رمز عبور">
- <button class="primary" onclick="login()">ورود به پنل</button><div id="login-message" class="status">حساب کاربری خود را وارد کنید.</div></div>
+ <div class="login-layout">
+  <div class="login-panel">
+   <div class="login-brand"><div class="brand"><div class="logo">F</div><div><strong>FOREX AI</strong><small>HYBRID SCALPER</small></div></div><span class="login-secure"><i></i> اتصال رمزگذاری‌شده</span></div>
+   <form id="login-form" class="card login-card" onsubmit="login(event)" autocomplete="on" novalidate>
+    <div class="login-topline"><span class="eyebrow">SECURE WORKSPACE</span><select id="login-language" class="field" aria-label="Language" onchange="setLanguage(this.value)"><option value="fa">فارسی</option><option value="en">English</option><option value="ar">العربية</option><option value="tr">Türkçe</option></select></div>
+    <h2>ورود کاربران</h2><p>برای دسترسی به فضای کاری امن، مشخصات حساب خود را وارد کنید.</p>
+    <label class="login-label" for="login-user">نام کاربری</label><input class="field" id="login-user" name="username" autocomplete="username" autocapitalize="none" spellcheck="false" required minlength="3" maxlength="64" placeholder="نام کاربری">
+    <label class="login-label" for="login-pass">رمز عبور</label><input class="field" id="login-pass" name="password" type="password" autocomplete="current-password" required maxlength="256" placeholder="رمز عبور">
+    <button class="primary login-submit" id="login-submit" type="submit"><span>ورود امن به پنل</span><span aria-hidden="true">↗</span></button>
+    <div id="login-message" class="status login-message" role="status" aria-live="polite">حساب کاربری خود را وارد کنید.</div>
+    <div class="login-foot"><span>● معاملات واقعی غیرفعال</span><span>محافظت نشست و محدودیت تلاش ورود</span></div>
+   </form>
+   <p class="login-caption">دسترسی فقط برای کاربران مجاز · برای ساخت حساب با مدیر سیستم تماس بگیرید.</p>
+  </div>
+  <div class="login-art" aria-hidden="true">
+   <svg viewBox="0 0 420 460" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <defs><linearGradient id="shield" x1="90" y1="70" x2="320" y2="380" gradientUnits="userSpaceOnUse"><stop stop-color="#00E9FF"/><stop offset=".5" stop-color="#1675FF"/><stop offset="1" stop-color="#704BFF"/></linearGradient><linearGradient id="lock" x1="170" y1="190" x2="250" y2="300" gradientUnits="userSpaceOnUse"><stop stop-color="#DFFFFF"/><stop offset="1" stop-color="#48D8FF"/></linearGradient></defs>
+    <circle cx="210" cy="225" r="150" stroke="#1B8DFF" stroke-opacity=".25"/><circle cx="210" cy="225" r="178" stroke="#00D7D0" stroke-opacity=".18" stroke-dasharray="3 9"/>
+    <path d="M210 55 335 105V210c0 91-54 151-125 190C139 361 85 301 85 210V105L210 55Z" fill="url(#shield)" fill-opacity=".2" stroke="url(#shield)" stroke-width="8"/>
+    <path d="M210 88 305 126V209c0 67-37 114-95 151-58-37-95-84-95-151v-83l95-38Z" fill="#0A8DFF" fill-opacity=".17" stroke="#52E9FF" stroke-opacity=".8" stroke-width="2"/>
+    <rect x="151" y="190" width="118" height="94" rx="18" fill="url(#lock)" fill-opacity=".92"/>
+    <path d="M177 190v-27c0-19 15-34 33-34s33 15 33 34v27" stroke="#79F4FF" stroke-width="13" stroke-linecap="round"/>
+    <circle cx="210" cy="230" r="15" fill="#071A3C"/><path d="M204 241h12l5 23h-22l5-23Z" fill="#071A3C"/>
+    <path d="M35 225h62M323 225h62M210 15v35M210 400v40" stroke="#36D9F6" stroke-opacity=".55" stroke-width="2"/>
+    <circle cx="66" cy="120" r="4" fill="#31E9E0"/><circle cx="350" cy="340" r="4" fill="#31E9E0"/><circle cx="330" cy="95" r="3" fill="#8B9DFF"/>
+   </svg>
+  </div>
+ </div>
 </section>
 <div id="app-shell" class="shell" hidden>
 <aside class="sidebar">
@@ -618,11 +780,15 @@ html[dir=rtl] .nav button:hover{transform:translateX(-3px)}html[dir=ltr] .nav bu
  <nav class="nav">
   <button class="active" data-page="overview" onclick="goPage('overview',this)"><span class="ico">▦</span>نمای کلی</button>
   <button data-page="signals" onclick="goPage('signals',this)"><span class="ico">⌁</span>سیگنال‌ها</button>
+  <button data-page="market-radar" onclick="goPage('market-radar',this)"><span class="ico">⌖</span>رادار بازار</button>
+  <button data-page="backtest" onclick="goPage('backtest',this)"><span class="ico">▧</span>آزمایشگاه بک‌تست</button>
+  <button data-page="sltp" onclick="goPage('sltp',this)"><span class="ico">⇅</span>مدیریت هوشمند SL/TP</button>
+  <button data-page="mt5" onclick="goPage('mt5',this)"><span class="ico">◉</span>اتصال زنده MT5</button>
   <button data-page="news" onclick="goPage(&quot;news&quot;,this)"><span class="ico">▤</span>خبرها</button>
   <button data-page="performance" onclick="goPage(&quot;performance&quot;,this)"><span class="ico">▥</span>عملکرد و نبض بازار</button>
   <button data-page="analysis" onclick="goPage('analysis',this)"><span class="ico">◫</span>تحلیل بازار</button>
   <button data-page="simulator" onclick="goPage('simulator',this)"><span class="ico">◉</span>شبیه‌ساز</button>
-  <button data-page="modules" onclick="goPage('modules',this)"><span class="ico">◇</span>ماژول‌های AI</button>
+  <button data-page="modules" onclick="goPage('modules',this)"><span class="ico">◇</span>مرکز ربات‌ها</button>
   <button data-page="ftmo" onclick="goPage('ftmo',this)"><span class="ico">◎</span>حساب‌های FTMO</button>
   <button id="users-nav" data-page="users" onclick="goPage('users',this)" hidden><span class="ico">♙</span>مدیریت کاربران</button>
  </nav>
@@ -647,6 +813,83 @@ html[dir=rtl] .nav button:hover{transform:translateX(-3px)}html[dir=ltr] .nav bu
    <article class="card"><div class="section-head"><h3>وضعیت سیستم</h3><span class="pill ok">محیط امن</span></div><div class="signal"><div class="pair"><div class="coin">AI</div><div><b>موتور تحلیل</b><small>قابل استفاده در حالت آزمایشی</small></div></div><span class="pill ok">آماده</span></div><div class="signal"><div class="pair"><div class="coin">N</div><div><b>فیلتر اخبار</b><small>منبع زنده متصل نیست</small></div></div><span class="pill">محدود</span></div><div class="signal"><div class="pair"><div class="coin">MT</div><div><b>اتصال MT5</b><small>اتصال برقرار نشده</small></div></div><span class="pill">قطع</span></div><div class="signal"><div class="pair"><div class="coin">EX</div><div><b>اجرای سفارش</b><small>در این نسخه خاموش است</small></div></div><span class="pill">غیرفعال</span></div><div id="status" class="status">در حال دریافت وضعیت...</div></article>
   </div>
   <div class="card" style="margin-top:14px"><div class="section-head"><h3>کنترل اضطراری</h3><small>دسترسی محدود به مدیر و معامله‌گر</small></div><div class="actions"><button id="stop" class="danger" onclick="activateStop()">فعال‌سازی توقف اضطراری</button><button class="ghost" onclick="refreshStatus()">به‌روزرسانی وضعیت</button></div><div id="toast" class="status"></div></div>
+ </section>
+ <section id="page-market-radar" class="page">
+  <div class="card">
+   <div class="section-head"><h3>رادار بازار · تحلیل کندل‌های واردشده</h3><span class="pill">تحقیقاتی · بدون اجرای سفارش</span></div>
+   <p class="eyebrow">۳۰ تا ۱۰۰۰ کندل تکمیل‌شده را از منبع معتبر خود وارد کن. این بخش خودش قیمت زنده دریافت نمی‌کند و کامل‌بودن کندل‌ها را باید منبع داده تضمین کند.</p>
+   <div class="actions">
+    <input id="radar-symbol" class="field" value="EURUSD" maxlength="32" aria-label="نماد" placeholder="نماد مانند EURUSD">
+    <input id="radar-timeframe" class="field" value="M15" maxlength="16" aria-label="تایم‌فریم" placeholder="تایم‌فریم مانند M15">
+   </div>
+   <label for="radar-candles" class="eyebrow">دادهٔ کندل‌ها در قالب JSON (هر کندل: timestamp, open, high, low, close, volume)</label>
+   <textarea id="radar-candles" class="field" rows="9" style="width:100%;font-family:monospace;direction:ltr;text-align:left" spellcheck="false" placeholder='[{"timestamp":"2026-11-02T10:00:00Z","open":1.1,"high":1.101,"low":1.099,"close":1.1005,"volume":120}]'></textarea>
+   <div class="actions" style="margin-top:12px"><button class="primary" id="radar-run" onclick="runMarketRadar()">تحلیل کندل‌ها</button><button class="ghost" onclick="document.getElementById('radar-candles').value=''">پاک‌کردن داده</button></div>
+   <div id="radar-message" class="status" aria-live="polite">برای تحلیل، دادهٔ واقعی و تکمیل‌شده وارد کن.</div>
+   <div id="radar-result" class="grid" style="margin-top:14px" hidden>
+    <article class="card"><div class="metric-foot">روند</div><div class="metric-value" id="radar-trend">—</div></article>
+    <article class="card"><div class="metric-foot">مومنتوم RSI 14</div><div class="metric-value" id="radar-rsi">—</div></article>
+    <article class="card"><div class="metric-foot">نوسان ATR ٪</div><div class="metric-value" id="radar-atr">—</div></article>
+    <article class="card"><div class="metric-foot">جهت‌گیری پژوهشی</div><div class="metric-value" id="radar-stance">—</div></article>
+   </div>
+   <div class="notice">خروجی صرفاً تحلیل تکنیکی است، نه توصیه سرمایه‌گذاری یا سیگنال اجرایی. تا زمان اتصال فید معتبر، اعداد را دستی/از منبع خودت وارد کن. اجرای زنده همچنان غیرفعال است.</div>
+  </div>
+ </section>
+ <section id="page-sltp" class="page">
+  <div class="card">
+   <div class="section-head"><h3>محاسبه‌گر هوشمند حدضرر و حدسود</h3><span class="pill">فقط محاسبه · بدون سفارش</span></div>
+   <p class="eyebrow">دادهٔ کندل‌های بسته‌شده و مشخصات واقعی نماد را از MT5 بگیر و در قالب JSON وارد کن. موتور ATR، سقف/کف ساختاری، اسپرد، محدودیت توقف بروکر و حجم مجاز را بررسی می‌کند.</p>
+   <label for="sltp-payload" class="eyebrow">ورودی کامل JSON مطابق نمونهٔ راهنما</label>
+   <textarea id="sltp-payload" class="field" rows="14" style="width:100%;font-family:monospace;direction:ltr;text-align:left" spellcheck="false" placeholder='{"side":"buy","entry":1.1,"equity":10000,"risk_pct":0.25,"reward_risk":1.5,"spread_points":12,"candles":[...],"broker":{"point":0.00001,"tick_size":0.00001,"tick_value_loss":1,"digits":5,"stops_level_points":10,"freeze_level_points":0,"volume_min":0.01,"volume_max":100,"volume_step":0.01}}'></textarea>
+   <div class="actions" style="margin-top:12px"><button class="primary" id="sltp-run" onclick="runSLTP()">محاسبهٔ SL/TP</button><button class="ghost" onclick="document.getElementById('sltp-payload').value=''">پاک‌کردن داده</button></div>
+   <div id="sltp-message" class="status" aria-live="polite">تا زمانی که مشخصات واقعی نماد و دادهٔ معتبر وارد نشود، خروجی تأیید نمی‌شود.</div>
+   <div id="sltp-result" class="grid" style="margin-top:14px" hidden>
+    <article class="card"><div class="metric-foot">Stop Loss</div><div class="metric-value" id="sltp-stop">—</div></article>
+    <article class="card"><div class="metric-foot">Take Profit</div><div class="metric-value" id="sltp-target">—</div></article>
+    <article class="card"><div class="metric-foot">حجم محاسبه‌شده</div><div class="metric-value" id="sltp-volume">—</div></article>
+    <article class="card"><div class="metric-foot">ریسک تخمینی</div><div class="metric-value" id="sltp-risk">—</div></article>
+   </div>
+   <div class="notice">این خروجی پیشنهاد محاسباتی است، نه سفارش و نه تضمین قیمت اجرا. tick value، tick size، اسپرد و قوانین نماد باید از ترمینال متصل و برای همان حساب/نماد تازه گرفته شوند. اجرای زنده خاموش است.</div>
+  </div>
+ </section>
+ <section id="page-mt5" class="page">
+  <div class="grid">
+   <article class="card"><div class="metric-top"><span>وضعیت پل MT5</span><span class="metric-icon">◉</span></div><div class="metric-value" id="mt5-connection-state">قطع</div><div class="metric-foot" id="mt5-connection-detail">هنوز داده‌ای دریافت نشده است.</div></article>
+   <article class="card"><div class="metric-top"><span>نماد و تایم‌فریم</span></div><div class="metric-value" id="mt5-symbol">—</div><div class="metric-foot" id="mt5-timeframe">—</div></article>
+   <article class="card"><div class="metric-top"><span>Bid / Ask</span></div><div class="metric-value" id="mt5-quote">—</div><div class="metric-foot" id="mt5-spread">اسپرد: —</div></article>
+   <article class="card"><div class="metric-top"><span>Equity</span></div><div class="metric-value" id="mt5-equity">—</div><div class="metric-foot" id="mt5-account-mode">حساب: —</div></article>
+  </div>
+  <div class="card" style="margin-top:14px">
+   <div class="section-head"><h3>اتصال خواندنی MetaTrader 5</h3><span class="pill">بدون اجرای سفارش</span></div>
+   <p class="eyebrow">این صفحه فقط snapshot واقعی ترمینال را نمایش می‌دهد: قیمت، کندل‌های بسته‌شده، مشخصات نماد و وضعیت حساب. هیچ رمز حساب یا شماره حسابی دریافت یا ذخیره نمی‌شود.</p>
+   <div class="actions"><button class="primary" onclick="loadMT5Bridge()">بروزرسانی وضعیت</button><span class="status" id="mt5-updated">در انتظار اتصال</span></div>
+   <div class="notice" id="mt5-setup-notice">برای اتصال، سرویس MT5 باید روی همین Ubuntu اجرا شود و Expert Advisor فقط‌خواندنی ForexAutoWebBridge به این API داده ارسال کند. کلید پل باید در تنظیمات امن سرویس و EA تنظیم شود؛ آن را در پیام یا مخزن عمومی قرار نده.</div>
+   <div style="overflow:auto;margin-top:14px"><table class="data-table" style="width:100%"><thead><tr><th>ساعت بروکر (بدون منطقه زمانی)</th><th>Open</th><th>High</th><th>Low</th><th>Close</th><th>Tick volume</th></tr></thead><tbody id="mt5-bars"><tr><td colspan="6">هنوز داده‌ای دریافت نشده است.</td></tr></tbody></table></div>
+   <div class="notice">وضعیت اتصال پس از ۱۲۰ ثانیه بدون داده تازه، قطع نمایش داده می‌شود. داده حساب فقط برای نمایش است. اجرای زنده و ارسال سفارش از این پل پشتیبانی نمی‌شود.</div>
+  </div>
+ </section>
+ <section id="page-backtest" class="page">
+  <div class="card">
+   <div class="section-head"><h3>آزمایشگاه بک‌تست EMA</h3><span class="pill">شبیه‌سازی تاریخی · بدون سفارش</span></div>
+   <p class="eyebrow">کندل‌های تاریخی OHLC را وارد کن. سیگنال در بسته‌شدن کندل محاسبه و ورود/خروج در بازشدن کندل بعدی شبیه‌سازی می‌شود؛ هزینهٔ معامله هم لحاظ می‌شود.</p>
+   <div class="actions">
+    <input id="bt-fast" class="field" type="number" min="2" max="199" value="9" aria-label="EMA سریع" placeholder="EMA سریع">
+    <input id="bt-slow" class="field" type="number" min="3" max="200" value="21" aria-label="EMA کند" placeholder="EMA کند">
+    <input id="bt-cost" class="field" type="number" min="0" max="1000" step="0.1" value="1" aria-label="هزینه هر سمت بر حسب bps" placeholder="هزینه هر سمت bps">
+    <input id="bt-equity" class="field" type="number" min="1" value="10000" aria-label="سرمایه اولیه" placeholder="سرمایه اولیه">
+   </div>
+   <label for="bt-candles" class="eyebrow">JSON کندل‌ها (timestamp, open, high, low, close)</label>
+   <textarea id="bt-candles" class="field" rows="9" style="width:100%;font-family:monospace;direction:ltr;text-align:left" spellcheck="false" placeholder='[{"timestamp":"2025-01-01T00:00:00Z","open":1.1,"high":1.102,"low":1.099,"close":1.101}]'></textarea>
+   <div class="actions" style="margin-top:12px"><button class="primary" id="bt-run" onclick="runBacktest()">اجرای بک‌تست</button><button class="ghost" onclick="document.getElementById('bt-candles').value=''">پاک‌کردن داده</button></div>
+   <div id="bt-message" class="status" aria-live="polite">بک‌تست فقط روی دادهٔ تاریخی واردشده اجرا می‌شود.</div>
+   <div id="bt-result" class="grid" style="margin-top:14px" hidden>
+    <article class="card"><div class="metric-foot">بازده کل</div><div class="metric-value" id="bt-return">—</div></article>
+    <article class="card"><div class="metric-foot">حداکثر افت سرمایه</div><div class="metric-value" id="bt-dd">—</div></article>
+    <article class="card"><div class="metric-foot">نرخ برد</div><div class="metric-value" id="bt-win">—</div></article>
+    <article class="card"><div class="metric-foot">تعداد معاملات</div><div class="metric-value" id="bt-count">—</div></article>
+   </div>
+   <div class="notice">نتیجه به کیفیت داده، اسپرد، لغزش، سوآپ، کمیسیون، ساعات بازار و شکاف قیمت حساس است. این مدل ساده است و جایگزین آزمون خارج از نمونه، تست دمو یا تأیید مستقل نیست. اجرای زنده غیرفعال می‌ماند.</div>
+  </div>
  </section>
  <section id="page-signals" class="page"><div class="card"><div class="section-head"><h3>سیگنال‌های معاملاتی</h3><span class="pill">اتصال زنده موجود نیست</span></div><p class="eyebrow">پس از اتصال منبع داده و موتور تولید سیگنال، نقاط ورود، حد ضرر، اهداف سود و نسبت ریسک به بازده در این بخش نمایش داده می‌شوند.</p><div class="signal"><div class="pair"><div class="coin">Au</div><div><b>XAUUSD · طلا</b><small>نمونه نمایشی، نه سیگنال واقعی</small></div></div><span class="pill">بدون سیگنال زنده</span></div><div class="signal"><div class="pair"><div class="coin">€</div><div><b>EURUSD</b><small>منتظر اتصال بازار</small></div></div><span class="pill">بدون سیگنال زنده</span></div></div></section>
  <section id="page-news" class="page">
@@ -691,7 +934,15 @@ html[dir=rtl] .nav button:hover{transform:translateX(-3px)}html[dir=ltr] .nav bu
 
  <section id="page-analysis" class="page"><div class="card"><div class="section-head"><h3>تحلیل چندتایم‌فریمی</h3><span class="pill">در انتظار داده بازار</span></div><div class="modules"><div class="module"><b>ساختار قیمت</b><small>Market Structure</small></div><div class="module"><b>SMC / ICT</b><small>مفاهیم نقدینگی و نواحی</small></div><div class="module"><b>رژیم بازار</b><small>تشخیص روند و نوسان</small></div></div><div class="notice">تا زمان اتصال فید معتبر قیمت، هیچ تحلیل یا جهت بازار به‌عنوان نتیجه زنده ارائه نمی‌شود.</div></div></section>
  <section id="page-simulator" class="page"><div class="card"><div class="section-head"><h3>شبیه‌ساز تصمیم</h3><span class="pill">آزمایشی</span></div><p class="eyebrow">این ابزار صرفاً منطق محافظتی را در شرایط نمونه نشان می‌دهد.</p><div class="actions"><select class="field" id="symbol"><option>XAUUSD</option><option>EURUSD</option><option>GBPUSD</option><option>USDJPY</option></select><button class="primary" onclick="preview()">اجرای پیش‌نمایش</button></div><div id="preview" class="status">برای شروع، نماد را انتخاب کنید.</div></div></section>
- <section id="page-modules" class="page"><div class="card"><div class="section-head"><h3>ماژول‌های هوش مصنوعی</h3><span class="pill">نمای معماری</span></div><div class="modules"><div class="module"><b>Market Scanner</b><small>اسکن نمادها و شرایط بازار</small></div><div class="module"><b>News Guard</b><small>فیلتر رویدادهای خبری</small></div><div class="module"><b>Adaptive AI</b><small>انتخاب رژیم و استراتژی</small></div><div class="module"><b>Ensemble AI</b><small>ترکیب مدل‌های تحلیلی</small></div><div class="module"><b>Smart Exit</b><small>مدیریت خروج و اهداف</small></div><div class="module"><b>Risk Manager</b><small>کنترل سرمایه و محدودیت‌ها</small></div></div></div></section>
+ <section id="page-modules" class="page">
+  <div class="hero"><div><h2>مرکز فرماندهی ربات‌ها</h2><p>وضعیت واقعی ماژول‌ها، سطح دسترسی و محدودیت‌های اجرایی را یکجا ببین.</p></div><span class="hero-tag">● اجرای سفارش خاموش است</span></div>
+  <div class="grid bot-grid">
+   <article class="card bot-card"><div class="bot-card-head"><span class="metric-icon">⌁</span><span class="pill" id="bot-signals-state">در حال بررسی</span></div><h3>ربات سیگنال‌دهی</h3><p>تحلیل کندل، روند، مومنتوم و نوسان؛ نمایش جهت‌گیری پژوهشی فقط پس از دریافت داده معتبر.</p><div class="bot-facts"><span>موتور تحلیل: <b id="bot-signals-engine">—</b></span><span>فید بازار: <b id="bot-signals-feed">—</b></span></div><button class="primary" onclick="goPage('market-radar',document.querySelector('[data-page=market-radar]'))">بازکردن تحلیل سیگنال</button></article>
+   <article class="card bot-card"><div class="bot-card-head"><span class="metric-icon">◇</span><span class="pill" id="bot-manager-state">در حال بررسی</span></div><h3>ربات مدیریت و کنترل ریسک</h3><p>پیش‌نمایش ریسک پرتفوی، کنترل توقف اضطراری و بررسی محدودیت‌ها؛ بدون ارسال یا مدیریت سفارش.</p><div class="bot-facts"><span>موتور ریسک: <b id="bot-manager-engine">—</b></span><span>توقف اضطراری: <b id="bot-manager-stop">—</b></span></div><button class="primary" onclick="goPage('simulator',document.querySelector('[data-page=simulator]'))">بازکردن کنترل ریسک</button></article>
+   <article class="card bot-card" id="bot-users-card"><div class="bot-card-head"><span class="metric-icon">♙</span><span class="pill" id="bot-users-state">در حال بررسی</span></div><h3>ربات مدیریت کاربران</h3><p>مدیریت حساب‌ها، نقش‌ها و فعال‌سازی کاربران با محدودیت دسترسی مدیر و ثبت وضعیت دسترسی.</p><div class="bot-facts"><span>کاربران ثبت‌شده: <b id="bot-users-count">—</b></span><span>سطح دسترسی: <b id="bot-users-access">—</b></span></div><button class="primary" id="bot-users-open" onclick="goPage('users',document.querySelector('[data-page=users]'))">مدیریت کاربران</button></article>
+  </div>
+  <div class="card" style="margin-top:14px"><div class="section-head"><h3>قواعد ایمنی مشترک</h3><span class="pill ok">فعال</span></div><div class="modules"><div class="module"><b>بدون اجرای سفارش</b><small>execution_allowed همیشه false</small></div><div class="module"><b>داده واقعی الزامی</b><small>داده نمونه به‌عنوان بازار زنده نمایش داده نمی‌شود</small></div><div class="module"><b>دسترسی مبتنی بر نقش</b><small>عملیات کاربران فقط برای مدیر سیستم</small></div></div><div id="bots-status-message" class="status" aria-live="polite">برای دریافت وضعیت، صفحه را تازه‌سازی کن.</div></div>
+ </section>
  <section id="page-ftmo" class="page">
   <div class="card"><div class="section-head"><h3>مدیریت حساب‌های FTMO</h3><span class="pill">ثبت چند حساب</span></div>
    <p class="eyebrow">برای هر حساب، محصول، مرحله و نوع حساب را جداگانه ثبت کن. رمز ورود MT5 یا رمز FTMO را وارد نکن.</p>
@@ -735,13 +986,67 @@ function applyLanguage(locale){activeLocale=["fa","en","ar","tr"].includes(local
  const title=document.getElementById("page-title");if(title&&currentPage)title.textContent=t(pageTitles[currentPage]);const crumb=document.getElementById("crumb");if(crumb&&currentPage)crumb.textContent=t(pageTitles[currentPage]);try{localStorage.setItem("forexai-locale",activeLocale);}catch(e){} }
 function setLanguage(locale){applyLanguage(locale);if(currentUser){document.getElementById("role-label").textContent=t("نقش: ")+t(currentUser.role);refreshStatus();if(currentPage==="news")loadNews();if(currentPage==="performance")loadPerformance();if(currentPage==="users")loadUsers();}}
 let currentPage="overview";
-const pageTitles={performance:"عملکرد و نبض بازار",news:"اخبار بازار",overview:"داشبورد معاملاتی",signals:"سیگنال‌های معاملاتی",analysis:"تحلیل بازار",simulator:"شبیه‌ساز تصمیم",modules:"ماژول‌های هوش مصنوعی",ftmo:"حساب‌های FTMO",users:"مدیریت کاربران"};
+let mt5BridgeRefreshTimer=null;
+const pageTitles={performance:"عملکرد و نبض بازار",news:"اخبار بازار",overview:"داشبورد معاملاتی",signals:"سیگنال‌های معاملاتی","market-radar":"رادار بازار",backtest:"آزمایشگاه بک‌تست",sltp:"مدیریت هوشمند SL/TP",mt5:"اتصال زنده MT5",analysis:"تحلیل بازار",simulator:"شبیه‌ساز تصمیم",modules:"مرکز ربات‌ها",ftmo:"حساب‌های FTMO",users:"مدیریت کاربران"};
 let csrfToken='',currentUser=null;
 async function api(path,options={}){const headers=Object.assign({"X-UI-Language":activeLocale},options.headers||{});if(options.method&&options.method!=='GET')headers['X-CSRF-Token']=csrfToken;return fetch(path,Object.assign({credentials:'same-origin'},options,{headers}));}
-async function login(){const msg=document.getElementById('login-message');try{const r=await fetch('/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json','X-UI-Language':activeLocale},body:JSON.stringify({username:document.getElementById('login-user').value,password:document.getElementById('login-pass').value})});const d=await r.json();if(!r.ok)throw Error(t('ورود ناموفق بود')+(d.detail?' · '+d.detail:''));csrfToken=d.csrf_token;document.getElementById('login-pass').value='';showApp(d.user);}catch(e){msg.textContent=e.message;}}
+async function login(event){if(event)event.preventDefault();const msg=document.getElementById('login-message'),button=document.getElementById('login-submit'),username=document.getElementById('login-user'),password=document.getElementById('login-pass');if(!username.value.trim()||!password.value){msg.textContent='نام کاربری و رمز عبور را وارد کنید.';return;}button.disabled=true;button.querySelector('span').textContent='در حال بررسی اطلاعات...';msg.textContent='در حال اتصال امن به سرور...';try{const r=await fetch('/api/auth/login',{method:'POST',credentials:'same-origin',cache:'no-store',headers:{'Content-Type':'application/json','X-UI-Language':activeLocale},body:JSON.stringify({username:username.value.trim(),password:password.value})});let d={};try{d=await r.json();}catch(parseError){throw Error('پاسخ سرور قابل خواندن نیست. صفحه را تازه‌سازی کنید.');}if(!r.ok)throw Error((d.detail||'ورود ناموفق بود')+(r.status===429?' · چند دقیقه بعد دوباره تلاش کنید.':''));if(!d.csrf_token||!d.user)throw Error('پاسخ ورود ناقص است؛ با پشتیبانی تماس بگیرید.');csrfToken=d.csrf_token;password.value='';msg.textContent='ورود موفق؛ در حال بازکردن پنل...';showApp(d.user);}catch(e){msg.textContent=e instanceof TypeError?'ارتباط با سرور برقرار نشد؛ اتصال اینترنت را بررسی و دوباره تلاش کنید.':e.message;}finally{button.disabled=false;button.querySelector('span').textContent='ورود امن به پنل';}}
 function showApp(user){currentUser=user;document.getElementById('login-screen').hidden=true;document.getElementById('app-shell').hidden=false;document.getElementById('account-label').textContent=user.username;document.getElementById('role-label').textContent=t('نقش: ')+t(user.role);document.getElementById('avatar').textContent=(user.username||'U').slice(0,1).toUpperCase();document.getElementById('users-nav').hidden=user.role!=='admin';refreshStatus();loadFtmoProducts();loadFtmoAccounts();if(user.role==='admin')loadUsers();}
 async function restoreSession(){try{const r=await fetch('/api/auth/me',{credentials:'same-origin'});if(!r.ok)return;const d=await r.json();csrfToken=d.csrf_token;showApp(d.user);}catch(e){}}
-function goPage(name,button){currentPage=name;if(name==='users'&&(!currentUser||currentUser.role!=='admin'))return;document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));document.getElementById('page-'+name).classList.add('active');document.querySelectorAll('.nav button').forEach(b=>b.classList.remove('active'));if(button)button.classList.add('active');if(name==='news')loadNews();if(name==='performance')loadPerformance();if(name==='ftmo'){loadFtmoProducts();loadFtmoAccounts();}document.getElementById('page-title').textContent=t(pageTitles[name]);document.getElementById('crumb').textContent=t(pageTitles[name]);}
+function goPage(name,button){if(name==='users'&&(!currentUser||currentUser.role!=='admin'))return;currentPage=name;if(mt5BridgeRefreshTimer!==null){clearInterval(mt5BridgeRefreshTimer);mt5BridgeRefreshTimer=null;}document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));document.getElementById('page-'+name).classList.add('active');document.querySelectorAll('.nav button').forEach(b=>b.classList.remove('active'));if(button)button.classList.add('active');if(name==='news')loadNews();if(name==='modules')loadBotStatus();if(name==='mt5'){loadMT5Bridge();mt5BridgeRefreshTimer=window.setInterval(()=>{if(currentPage==='mt5')loadMT5Bridge();},15000);}if(name==='performance')loadPerformance();if(name==='ftmo'){loadFtmoProducts();loadFtmoAccounts();}document.getElementById('page-title').textContent=t(pageTitles[name]);document.getElementById('crumb').textContent=t(pageTitles[name]);}
+async function runSLTP(){
+ const msg=document.getElementById('sltp-message'),button=document.getElementById('sltp-run'),out=document.getElementById('sltp-result');
+ out.hidden=true;button.disabled=true;msg.textContent='در حال اعتبارسنجی مشخصات بروکر و محاسبه...';
+ try{
+  const payload=JSON.parse(document.getElementById('sltp-payload').value);
+  const response=await api('/api/sltp/plan',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+  const data=await response.json();if(!response.ok)throw Error(data.detail||'محاسبه انجام نشد.');
+  const p=data.plan;
+  if(!p.valid){msg.textContent='طرح رد شد: '+p.reasons.join('، ');return;}
+  document.getElementById('sltp-stop').textContent=String(p.stop_loss);
+  document.getElementById('sltp-target').textContent=String(p.take_profit);
+  document.getElementById('sltp-volume').textContent=Number(p.volume).toFixed(3);
+  document.getElementById('sltp-risk').textContent=Number(p.estimated_risk_money).toFixed(2);
+  out.hidden=false;msg.textContent='محاسبه معتبر است · ATR '+Number(p.atr).toPrecision(5)+' · R/R '+Number(p.reward_risk).toFixed(2)+' · اجازه اجرا: خیر';
+ }catch(e){msg.textContent='خطا: '+e.message;}
+ finally{button.disabled=false;}
+}
+async function runBacktest(){
+ const msg=document.getElementById('bt-message'),button=document.getElementById('bt-run'),out=document.getElementById('bt-result');
+ out.hidden=true;button.disabled=true;msg.textContent='در حال اجرای شبیه‌سازی...';
+ try{
+  const candles=JSON.parse(document.getElementById('bt-candles').value);
+  if(!Array.isArray(candles))throw Error('ورودی باید آرایه‌ای از کندل‌ها باشد.');
+  const payload={candles,fast_period:Number(document.getElementById('bt-fast').value),slow_period:Number(document.getElementById('bt-slow').value),cost_bps_per_side:Number(document.getElementById('bt-cost').value),initial_equity:Number(document.getElementById('bt-equity').value)};
+  const response=await api('/api/backtest/run',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+  const data=await response.json();if(!response.ok)throw Error(data.detail||'بک‌تست ناموفق بود.');
+  const r=data.result;
+  document.getElementById('bt-return').textContent=Number(r.total_return_pct).toFixed(2)+'%';
+  document.getElementById('bt-dd').textContent=Number(r.max_drawdown_pct).toFixed(2)+'%';
+  document.getElementById('bt-win').textContent=Number(r.win_rate_pct).toFixed(1)+'%';
+  document.getElementById('bt-count').textContent=String(r.trade_count);
+  out.hidden=false;msg.textContent='بک‌تست تمام شد · '+r.bars+' کندل · سرمایه نهایی '+Number(r.final_equity).toFixed(2)+' · اجازه اجرا: خیر';
+ }catch(e){msg.textContent='خطا: '+e.message;}
+ finally{button.disabled=false;}
+}
+async function runMarketRadar(){
+ const msg=document.getElementById('radar-message'),button=document.getElementById('radar-run'),out=document.getElementById('radar-result');
+ out.hidden=true;button.disabled=true;msg.textContent='در حال اعتبارسنجی و تحلیل داده‌ها...';
+ try{
+  const raw=JSON.parse(document.getElementById('radar-candles').value);
+  if(!Array.isArray(raw))throw Error('ورودی باید آرایه‌ای از کندل‌ها باشد.');
+  const payload={symbol:document.getElementById('radar-symbol').value.trim(),timeframe:document.getElementById('radar-timeframe').value.trim(),candles:raw};
+  const response=await api('/api/market-radar/analyze',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+  const data=await response.json();if(!response.ok)throw Error(data.detail||'تحلیل انجام نشد.');
+  const a=data.analysis;
+  document.getElementById('radar-trend').textContent=t(a.trend);
+  document.getElementById('radar-rsi').textContent=Number(a.rsi_14).toFixed(2)+' · '+t(a.momentum);
+  document.getElementById('radar-atr').textContent=Number(a.atr_pct).toFixed(3)+'% · '+t(a.volatility);
+  document.getElementById('radar-stance').textContent=t(a.stance);
+  out.hidden=false;msg.textContent='تحلیل انجام شد · '+a.bars+' کندل · آخرین قیمت '+a.latest_close+' · اجازه اجرای سفارش: خیر';
+ }catch(e){msg.textContent='خطا: '+e.message;}
+ finally{button.disabled=false;}
+}
 function toggleTheme(){document.documentElement.classList.toggle('light');}
 async function logout(){try{await api('/api/auth/logout',{method:'POST'});}finally{csrfToken='';location.reload();}}
 let brokerSearchTimer=null;
@@ -784,6 +1089,26 @@ async function loadFtmoProducts(){try{const r=await fetch('/api/ftmo/products',{
 function refreshFtmoOptions(){const spec=ftmoProducts[document.getElementById('ftmo-product').value]||{phases:[],account_types:[]};const p=document.getElementById('ftmo-phase'),t=document.getElementById('ftmo-type');p.replaceChildren();t.replaceChildren();const p0=document.createElement('option');p0.value='';p0.textContent='انتخاب مرحله';p.appendChild(p0);spec.phases.forEach(v=>{const o=document.createElement('option');o.value=v;o.textContent=ftmoPhaseLabels[v]||v;p.appendChild(o);});const t0=document.createElement('option');t0.value='';t0.textContent='نوع حساب معاملاتی';t.appendChild(t0);spec.account_types.forEach(v=>{const o=document.createElement('option');o.value=v;o.textContent=ftmoTypeLabels[v]||v;t.appendChild(o);});}
 async function saveFtmoAccount(e){e.preventDefault();const msg=document.getElementById('ftmo-message');const payload={label:document.getElementById('ftmo-label').value,account_number:document.getElementById('ftmo-number').value||null,product:document.getElementById('ftmo-product').value,phase:document.getElementById('ftmo-phase').value,account_type:document.getElementById('ftmo-type').value,platform:document.getElementById('ftmo-platform').value,initial_capital:Number(document.getElementById('ftmo-capital').value),currency:document.getElementById('ftmo-currency').value};try{const r=await api('/api/ftmo/accounts',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});const d=await r.json();if(!r.ok)throw Error(d.detail||'ثبت حساب ناموفق بود');msg.textContent='حساب با موفقیت ثبت شد.';document.getElementById('ftmo-account-form').reset();refreshFtmoOptions();await loadFtmoAccounts();}catch(e){msg.textContent='خطا: '+e.message;}}
 async function loadFtmoAccounts(){const el=document.getElementById('ftmo-account-list');if(!el)return;try{const r=await fetch('/api/ftmo/accounts',{headers:{'X-UI-Language':activeLocale}});const d=await r.json();if(!r.ok)throw Error(d.detail||'خطا');el.replaceChildren();if(!d.accounts.length){el.textContent='هنوز حسابی ثبت نشده است.';return;}d.accounts.forEach(a=>{const row=document.createElement('div');row.className='user-row';const info=document.createElement('span');info.textContent=a.label+' · '+(ftmoLabels[a.product]||a.product)+' · '+(ftmoPhaseLabels[a.phase]||a.phase)+' · '+(ftmoTypeLabels[a.account_type]||a.account_type)+' · '+Number(a.initial_capital).toLocaleString(activeLocale)+' '+a.currency+(a.account_number?' · #'+a.account_number:'')+' · '+a.platform;const badge=document.createElement('span');badge.className='pill'+(a.active?' ok':'');badge.textContent=a.active?'فعال':'غیرفعال';row.append(info,badge);el.appendChild(row);});}catch(e){el.textContent=e.message;}}
+async function loadBotStatus(){
+ const msg=document.getElementById('bots-status-message');
+ try{
+  const r=await api('/api/bots/status');const d=await r.json();if(!r.ok)throw Error(d.detail||'دریافت وضعیت ربات‌ها ناموفق بود');
+  const bots=Object.fromEntries((d.bots||[]).map(bot=>[bot.id,bot]));
+  const signal=bots.signals||{},manager=bots.manager||{},users=bots.users||{};
+  document.getElementById('bot-signals-state').textContent=signal.market_data_connected?'داده متصل':'فقط پژوهشی';
+  document.getElementById('bot-signals-engine').textContent=signal.engine_available?'آماده':'در دسترس نیست';
+  document.getElementById('bot-signals-feed').textContent=signal.market_data_connected?'متصل':'متصل نیست';
+  document.getElementById('bot-manager-state').textContent=manager.state==='risk_preview_only'?'پیش‌نمایش ریسک':'محدود';
+  document.getElementById('bot-manager-engine').textContent=manager.engine_available?'آماده':'در دسترس نیست';
+  document.getElementById('bot-manager-stop').textContent=manager.emergency_stop?'فعال':'غیرفعال';
+  document.getElementById('bot-users-state').textContent=users.available?'مدیریت مدیر':'دسترسی محدود';
+  document.getElementById('bot-users-count').textContent=users.available?String(users.user_count):'محرمانه';
+  document.getElementById('bot-users-access').textContent=users.available?'مدیر سیستم':'فقط مدیر';
+  document.getElementById('bot-users-open').disabled=!users.available;
+  document.getElementById('bot-users-card').classList.toggle('bot-restricted',!users.available);
+  msg.textContent='وضعیت از سرور دریافت شد · اجرای سفارش برای همه ربات‌ها غیرفعال است.';
+ }catch(e){msg.textContent='خطا در دریافت وضعیت ربات‌ها: '+e.message;}
+}
 async function loadUsers(){const el=document.getElementById('users-list');try{const r=await fetch('/api/users',{headers:{'X-UI-Language':activeLocale}});const d=await r.json();if(!r.ok)throw Error(d.detail||'خطا');el.replaceChildren();d.users.forEach(u=>{const row=document.createElement('div');row.className='user-row';const label=document.createElement('span');label.textContent=u.username+' · '+t(u.role)+' · '+(u.active?t('فعال'):t('غیرفعال'));row.appendChild(label);if(u.role!=='admin'){const b=document.createElement('button');b.className='ghost';b.textContent=u.active?t('غیرفعال‌کردن'):t('فعال‌کردن');b.onclick=()=>setUserActive(u.id,!u.active);row.appendChild(b);}el.appendChild(row);});}catch(e){el.textContent=e.message;}}
 async function createUser(){try{const r=await api('/api/users',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:document.getElementById('new-username').value,password:document.getElementById('new-password').value,role:document.getElementById('new-role').value})});const d=await r.json();if(!r.ok)throw Error(d.detail||'خطا');document.getElementById('new-password').value='';await loadUsers();}catch(e){document.getElementById('users-list').textContent=e.message;}}
 async function setUserActive(id,active){try{const r=await api('/api/users/'+id+'/active?active='+active,{method:'PATCH'});const d=await r.json();if(!r.ok)throw Error(d.detail||'خطا');await loadUsers();}catch(e){document.getElementById('users-list').textContent=e.message;}}
@@ -835,6 +1160,32 @@ async function installPwa(){if(!deferredInstallPrompt)return;deferredInstallProm
 if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('/service-worker.js').catch(()=>{}));}
 try{applyLanguage(localStorage.getItem('forexai-locale')||'fa');}catch(e){applyLanguage('fa');}
 restoreSession();
+
+async function loadMT5Bridge(){
+ const state=document.getElementById('mt5-connection-state');
+ const detail=document.getElementById('mt5-connection-detail');
+ try{
+  const sr=await api('/api/mt5/bridge/status');
+  const st=await sr.json();
+  if(!sr.ok)throw Error(st.detail||'خطا در دریافت وضعیت پل');
+  state.textContent=st.connected?'متصل':'قطع';
+  detail.textContent=st.connected?'داده تازه · '+st.age_seconds+' ثانیه قبل':'هنوز snapshot تازه دریافت نشده است';
+  document.getElementById('mt5-symbol').textContent=st.symbol||'—';
+  document.getElementById('mt5-timeframe').textContent=st.timeframe||'—';
+  document.getElementById('mt5-account-mode').textContent='حساب: '+(st.account_mode||'—')+' · '+(st.server_name||'');
+  document.getElementById('mt5-setup-notice').textContent=st.configured
+   ?'کلید پل روی سرور تنظیم شده است. برای نمایش داده زنده، EA فقط‌خواندنی باید در ترمینال MT5 اجرا و به این endpoint متصل باشد.'
+   :'کلید پل هنوز تنظیم نشده است. ابتدا کلید امن MT5_BRIDGE_TOKEN را در محیط سرویس تعریف کن؛ سپس همان کلید را فقط در تنظیمات EA قرار بده.';
+  const r=await api('/api/mt5/bridge/snapshot');
+  if(!r.ok){document.getElementById('mt5-bars').innerHTML='<tr><td colspan="6">در انتظار اولین snapshot از MT5</td></tr>';return;}
+  const d=await r.json(),p=d.snapshot;
+  document.getElementById('mt5-quote').textContent=Number(p.bid).toFixed(p.digits)+' / '+Number(p.ask).toFixed(p.digits);
+  document.getElementById('mt5-spread').textContent='اسپرد: '+Number(p.spread_points).toFixed(1)+' points';
+  document.getElementById('mt5-equity').textContent=Number(p.equity).toFixed(2)+' '+p.currency;
+  document.getElementById('mt5-updated').textContent='آخرین دریافت: '+new Date(d.received_at*1000).toLocaleString();
+  document.getElementById('mt5-bars').innerHTML=(p.bars||[]).slice(-30).reverse().map(c=>'<tr><td>'+new Date(c.time*1000).toISOString().slice(0,16).replace('T',' ')+'</td><td>'+c.open+'</td><td>'+c.high+'</td><td>'+c.low+'</td><td>'+c.close+'</td><td>'+c.tick_volume+'</td></tr>').join('');
+ }catch(e){state.textContent='خطا';detail.textContent=e.message;}
+}
 </script>
 </body></html>
 """

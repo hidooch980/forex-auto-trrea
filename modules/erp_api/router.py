@@ -51,6 +51,8 @@ class BrainPipelinePayload(BaseModel):
     daily_loss_pct: float = Field(default=0, ge=0, le=100)
     drawdown_pct: float = Field(default=0, ge=0, le=100)
     spread_pips: float = Field(default=0, ge=0, le=100000)
+    # Required at decision time for any directional candidate; absent evidence fails closed.
+    behavior: dict[str, Any] | None = None
 
 
 class AgentForecastPayload(BaseModel):
@@ -114,7 +116,7 @@ class ReservationTransitionPayload(BaseModel):
     timestamp: int | None = Field(default=None, ge=0)
 
 class UnlockPayload(BaseModel):
-    lock_name: str = Field(pattern="^(daily|drawdown)$")
+    lock_name: str = Field(pattern="^(daily|drawdown|emergency_stop)$")
     reason: str = Field(min_length=8, max_length=500)
     timestamp: int | None = Field(default=None, ge=0)
 
@@ -128,6 +130,7 @@ def _snapshot_dict(snapshot):
         "peak_drawdown_pct": snapshot.peak_drawdown_pct,
         "daily_lock": snapshot.daily_lock,
         "drawdown_lock": snapshot.drawdown_lock,
+        "emergency_stop": snapshot.emergency_stop,
         "locked": snapshot.locked,
         "updated_at": snapshot.updated_at,
     }
@@ -193,15 +196,77 @@ def build_erp_router(require_role: Callable, ledger: PersistentRiskLedger) -> AP
                 symbol=raw["symbol"], market_data_valid=quality.valid,
                 calendar_valid=raw["calendar_valid"],
                 high_impact_blackout=raw["high_impact_blackout"],
-                emergency_stop=raw["emergency_stop"] or affect.state == "extreme",
+                emergency_stop=raw["emergency_stop"] or ledger.snapshot().locked or affect.state == "extreme",
                 daily_loss_pct=raw["daily_loss_pct"],
                 drawdown_pct=raw["drawdown_pct"], spread_pips=raw["spread_pips"],
                 requested_risk_pct=0.025, reliability=reliability,
             )
             decision = evaluate_market(context, signals, BrainConfig())
-            pipeline.stage(run_id, "RISK_GATE", "brain_decision_created", "Deterministic committee decision evaluated")
+            decision_data = decision.to_dict()
+            behavioral_guard = {
+                "evaluated": False, "approved": False,
+                "reasons": ["not_required_for_non_directional_decision"],
+                "behavior_flags": [], "risk_cap_pct": 0.0,
+            }
+            if decision.approved:
+                behavior_raw = raw.get("behavior")
+                if not isinstance(behavior_raw, dict):
+                    behavioral_guard = {
+                        "evaluated": True, "approved": False,
+                        "reasons": ["behavioral_evidence_missing"],
+                        "behavior_flags": [], "risk_cap_pct": 0.0,
+                    }
+                else:
+                    behavior_input = TradingBehaviorPayload.model_validate(behavior_raw)
+                    account = AccountRisk(
+                        daily_loss_pct=behavior_input.daily_loss_pct,
+                        weekly_loss_pct=behavior_input.weekly_loss_pct,
+                        peak_drawdown_pct=behavior_input.peak_drawdown_pct,
+                        trades_today=behavior_input.trades_today,
+                        consecutive_losses=behavior_input.consecutive_losses,
+                        emergency_stop=behavior_input.emergency_stop or ledger.snapshot().locked,
+                    )
+                    behavior_metrics = BehaviorMetrics(
+                        trades_last_hour=behavior_input.trades_last_hour,
+                        minutes_since_last_loss=behavior_input.minutes_since_last_loss,
+                        risk_vs_recent_average=behavior_input.risk_vs_recent_average,
+                        volume_multiplier_after_loss=behavior_input.volume_multiplier_after_loss,
+                        signal_age_seconds=behavior_input.signal_age_seconds,
+                        normal_signal_age_seconds=behavior_input.normal_signal_age_seconds,
+                    )
+                    proposal = TradeProposal(
+                        risk_pct=behavior_input.proposed_risk_pct,
+                        reward_risk=behavior_input.reward_risk,
+                        has_stop_loss=behavior_input.has_stop_loss,
+                        market_data_valid=behavior_input.market_data_valid,
+                        calendar_clear=behavior_input.calendar_clear,
+                        spread_acceptable=behavior_input.spread_acceptable,
+                    )
+                    guard_result = evaluate_trade(account, proposal, behavior_metrics, RiskLimits())
+                    behavioral_guard = {
+                        "evaluated": True, "approved": guard_result.approved,
+                        "reasons": list(guard_result.reasons),
+                        "behavior_flags": list(guard_result.behavior_flags),
+                        "risk_cap_pct": guard_result.risk_cap_pct,
+                        "cooldown_required_minutes": guard_result.cooldown_required_minutes,
+                        "interpretation": "objective_behavioral_proxies_only",
+                    }
+                if not behavioral_guard["approved"]:
+                    decision_data["approved"] = False
+                    decision_data["action"] = "HOLD"
+                    decision_data["risk_pct"] = 0.0
+                    decision_data["reasons"] = list(decision_data["reasons"]) + ["behavioral_guard_blocked"]
+                else:
+                    decision_data["risk_pct"] = min(
+                        decision_data["risk_pct"],
+                        behavior_input.proposed_risk_pct,
+                        behavioral_guard["risk_cap_pct"],
+                    )
+
+            pipeline.stage(run_id, "RISK_GATE", "brain_decision_created", "Master Brain and behavioral risk gates evaluated")
             output = {
-                "decision": decision.to_dict(),
+                "decision": decision_data,
+                "behavioral_guard": behavioral_guard,
                 "market_quality": quality.to_dict(),
                 "market_affect": {
                     "state": affect.state, "stress_score": affect.stress_score,
@@ -212,9 +277,9 @@ def build_erp_router(require_role: Callable, ledger: PersistentRiskLedger) -> AP
                 "live_trading_enabled": False,
                 "risk_reservation": None,
             }
-            if decision.approved:
+            if decision_data["approved"]:
                 try:
-                    reserved = ledger.reserve(run_id, "master_brain", decision.risk_pct, status="PENDING")
+                    reserved = ledger.reserve(run_id, "master_brain", decision_data["risk_pct"], status="PENDING")
                     output["risk_reservation"] = _snapshot_dict(reserved)
                 except (RiskLimitError, RiskStateError) as exc:
                     output["decision"]["approved"] = False
@@ -426,6 +491,17 @@ def build_erp_router(require_role: Callable, ledger: PersistentRiskLedger) -> AP
         except RiskStateError as exc:
             raise HTTPException(status_code=409, detail=str(exc)) from exc
         except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        return {"ok": True, "risk": _snapshot_dict(snap), "execution_allowed": False}
+
+    @router.post("/risk/emergency-stop")
+    def activate_emergency_stop(payload: UnlockPayload, request: Request):
+        require_role(request, "admin")
+        if payload.lock_name != "emergency_stop":
+            raise HTTPException(status_code=400, detail="lock_name must be emergency_stop")
+        try:
+            snap = ledger.set_emergency_stop(True, payload.reason, now=payload.timestamp)
+        except (ValueError, RiskStateError) as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
         return {"ok": True, "risk": _snapshot_dict(snap), "execution_allowed": False}
 

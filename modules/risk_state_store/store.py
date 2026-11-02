@@ -41,10 +41,11 @@ class RiskSnapshot:
     daily_lock: bool
     drawdown_lock: bool
     updated_at: int | None
+    emergency_stop: bool = False
 
     @property
     def locked(self) -> bool:
-        return self.daily_lock or self.drawdown_lock
+        return self.daily_lock or self.drawdown_lock or self.emergency_stop
 
 
 class PersistentRiskLedger:
@@ -144,7 +145,7 @@ class PersistentRiskLedger:
             db.execute("BEGIN IMMEDIATE")
             locks = {r["lock_name"] for r in db.execute(
                 "SELECT lock_name FROM risk_locks WHERE active=1")}
-            if "drawdown" in locks or "daily" in locks:
+            if "drawdown" in locks or "daily" in locks or "emergency_stop" in locks:
                 raise RiskLimitError("persistent_risk_lock")
             existing = db.execute(
                 "SELECT 1 FROM reservations WHERE reservation_id=?", (reservation_id,)).fetchone()
@@ -243,9 +244,26 @@ class PersistentRiskLedger:
             db.close()
         return self.snapshot(now=stamp)
 
+    def set_emergency_stop(self, active: bool, reason: str, *, now: int | None = None) -> RiskSnapshot:
+        """Persist a global emergency stop; clearing it requires an explicit audited action."""
+        if not isinstance(active, bool) or not isinstance(reason, str) or not reason.strip():
+            raise ValueError("active boolean and non-empty reason are required")
+        stamp = self._now(now)
+        with closing(self._connect()) as db:
+            db.execute("BEGIN IMMEDIATE")
+            db.execute(
+                "INSERT INTO risk_locks VALUES('emergency_stop',?,?,?) "
+                "ON CONFLICT(lock_name) DO UPDATE SET active=excluded.active,reason=excluded.reason,changed_at=excluded.changed_at",
+                (1 if active else 0, reason.strip(), stamp),
+            )
+            self._audit(db, "EMERGENCY_STOP_ON" if active else "EMERGENCY_STOP_OFF",
+                        "emergency_stop", reason.strip(), stamp)
+            db.commit()
+        return self.snapshot(now=stamp)
+
     def unlock(self, lock_name: str, reason: str, *, now: int | None = None) -> RiskSnapshot:
         """Explicit operator override; the reason is retained in the audit trail."""
-        if lock_name not in {"daily", "drawdown"} or not reason.strip():
+        if lock_name not in {"daily", "drawdown", "emergency_stop"} or not isinstance(reason, str) or not reason.strip():
             raise ValueError("valid lock_name and non-empty reason are required")
         stamp = self._now(now)
         with closing(self._connect()) as db:
@@ -287,4 +305,5 @@ class PersistentRiskLedger:
             daily_lock=locks.get("daily", False),
             drawdown_lock=locks.get("drawdown", False),
             updated_at=updated_at,
+            emergency_stop=locks.get("emergency_stop", False),
         )
