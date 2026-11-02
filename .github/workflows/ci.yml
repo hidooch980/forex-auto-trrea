@@ -24,6 +24,8 @@ jobs:
         run: python -m pytest -q modules/portfolio_risk_guard/tests
       - name: Persistent risk ledger tests
         run: python -m pytest -q modules/risk_state_store/tests
+      - name: Persistent data pipeline tests
+        run: python -m pytest -q modules/data_pipeline/tests
       - name: Unified ERP API integration tests
         run: python -m pytest -q modules/erp_api/tests
       - name: XAUUSD Phantom four-engine tests
