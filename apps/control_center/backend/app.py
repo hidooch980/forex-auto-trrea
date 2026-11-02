@@ -332,7 +332,7 @@ html[dir=rtl] .nav button:hover{transform:translateX(-3px)}html[dir=ltr] .nav bu
 <script>
 const I18N = __I18N_CATALOG__;
 let activeLocale = "fa";
-function t(source){if(activeLocale==="fa")return source;return (I18N[source]&&I18N[source][activeLocale])||source;}
+function t(source){return (I18N[source]&&I18N[source][activeLocale])||source;}
 const originalTextNodes=new WeakMap();
 function applyLanguage(locale){activeLocale=["fa","en","ar","tr"].includes(locale)?locale:"fa";const rtl=["fa","ar"].includes(activeLocale);document.documentElement.lang=activeLocale;document.documentElement.dir=rtl?"rtl":"ltr";["language-select","login-language"].forEach(id=>{const select=document.getElementById(id);if(select)select.value=activeLocale;});const walker=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);let node;while(node=walker.nextNode()){if(!node.parentElement||["SCRIPT","STYLE"].includes(node.parentElement.tagName))continue;if(!originalTextNodes.has(node))originalTextNodes.set(node,node.nodeValue);const original=originalTextNodes.get(node);const trimmed=original.trim();if(!trimmed)continue;const translated=t(trimmed);node.nodeValue=original.replace(trimmed,translated);}
  document.querySelectorAll("[placeholder],[title],[aria-label]").forEach(el=>{for(const attr of ["placeholder","title","aria-label"]){if(!el.hasAttribute(attr))continue;const key="i18n"+attr[0].toUpperCase()+attr.slice(1);if(!el.dataset[key])el.dataset[key]=el.getAttribute(attr);el.setAttribute(attr,t(el.dataset[key]));}});
