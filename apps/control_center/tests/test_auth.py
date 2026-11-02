@@ -58,3 +58,25 @@ def test_admin_cannot_deactivate_self_or_last_active_admin(tmp_path, monkeypatch
         assert "last active administrator" in str(exc)
 
     assert auth.authenticate("root_admin", "A-very-long-admin-password-2026") is not None
+
+def test_login_throttle_persists_and_expires(tmp_path, monkeypatch):
+    monkeypatch.setattr(auth, "DB_PATH", tmp_path / "auth.sqlite3")
+    auth.init_auth()
+    identity = "127.0.0.1|trader"
+    assert auth.login_is_blocked(identity, now=1000) == (False, 0)
+    for index in range(8):
+        auth.record_login_failure(identity, now=1000 + index)
+    blocked, retry = auth.login_is_blocked(identity, now=1008)
+    assert blocked is True
+    assert retry == 900
+    assert auth.login_is_blocked(identity, now=1909) == (False, 0)
+
+
+def test_successful_login_clears_throttle_state(tmp_path, monkeypatch):
+    monkeypatch.setattr(auth, "DB_PATH", tmp_path / "auth.sqlite3")
+    auth.init_auth()
+    identity = "127.0.0.1|trader"
+    for index in range(7):
+        auth.record_login_failure(identity, now=2000 + index)
+    auth.clear_login_failures(identity)
+    assert auth.login_is_blocked(identity, now=2008) == (False, 0)
