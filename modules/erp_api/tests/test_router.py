@@ -105,16 +105,105 @@ def test_brain_pipeline_validates_evidence_fuses_and_reserves_central_risk(tmp_p
         symbol="XAUUSD", bars=bars, expected_interval_seconds=30,
         market_as_of=now.isoformat(), agents=[agent("technical"), agent("news")],
         calendar_valid=True, emergency_stop=False, spread_pips=1,
+        behavior={
+            "daily_loss_pct": 0.1, "weekly_loss_pct": 0.2, "peak_drawdown_pct": 0.5,
+            "trades_today": 2, "consecutive_losses": 0, "emergency_stop": False,
+            "trades_last_hour": 1, "minutes_since_last_loss": 120,
+            "risk_vs_recent_average": 1.0, "volume_multiplier_after_loss": 1.0,
+            "signal_age_seconds": 30, "normal_signal_age_seconds": 60,
+            "proposed_risk_pct": 0.025, "reward_risk": 2.0,
+            "has_stop_loss": True, "market_data_valid": True,
+            "calendar_clear": True, "spread_acceptable": True,
+        },
     )
     endpoint = _endpoint(router, "/api/erp/brain/pipeline", "POST")
     result = endpoint(payload, SimpleNamespace(headers={"idempotency-key": "brain-test"}))
     run = result["run"]
     assert run["status"] == "COMPLETE"
     assert run["output"]["decision"]["action"] == "BUY"
+    assert run["output"]["behavioral_guard"]["approved"] is True
     assert run["output"]["execution_allowed"] is False
     assert run["output"]["risk_reservation"]["active_reservations"] == 1
     assert ledger.snapshot().active_risk_pct == pytest.approx(0.025)
 
+
+
+
+def test_brain_pipeline_fails_closed_without_behavioral_evidence(tmp_path, monkeypatch):
+    from datetime import datetime, timezone, timedelta
+    from modules.erp_api.router import BrainPipelinePayload, AgentEvidencePayload
+
+    router, ledger, _ = _router(tmp_path, monkeypatch)
+    now = datetime.now(timezone.utc)
+    bars = [
+        {"time": int((now - timedelta(minutes=1)).timestamp()), "open": 2000, "high": 2002, "low": 1999, "close": 2001},
+        {"time": int((now - timedelta(seconds=30)).timestamp()), "open": 2001, "high": 2003, "low": 2000, "close": 2002},
+    ]
+    agents = [
+        AgentEvidencePayload(
+            agent_id=name, schema_version="1.0", scope="XAUUSD",
+            as_of=now.isoformat(), source_ids=[f"feed:{name}"],
+            data_quality="valid", confidence=0.95, stance="bullish",
+            rationale="test evidence",
+        )
+        for name in ("technical", "news")
+    ]
+    payload = BrainPipelinePayload(
+        symbol="XAUUSD", bars=bars, expected_interval_seconds=30,
+        market_as_of=now.isoformat(), agents=agents,
+        calendar_valid=True, emergency_stop=False, spread_pips=1,
+    )
+    result = _endpoint(router, "/api/erp/brain/pipeline", "POST")(
+        payload, SimpleNamespace(headers={})
+    )["run"]
+    assert result["output"]["decision"]["action"] == "HOLD"
+    assert "behavioral_guard_blocked" in result["output"]["decision"]["reasons"]
+    assert "behavioral_evidence_missing" in result["output"]["behavioral_guard"]["reasons"]
+    assert result["output"]["risk_reservation"] is None
+    assert ledger.snapshot().active_reservations == 0
+
+
+def test_brain_pipeline_behavioral_guard_blocks_revenge_trading(tmp_path, monkeypatch):
+    from datetime import datetime, timezone, timedelta
+    from modules.erp_api.router import BrainPipelinePayload, AgentEvidencePayload
+
+    router, ledger, _ = _router(tmp_path, monkeypatch)
+    now = datetime.now(timezone.utc)
+    bars = [
+        {"time": int((now - timedelta(minutes=1)).timestamp()), "open": 2000, "high": 2002, "low": 1999, "close": 2001},
+        {"time": int((now - timedelta(seconds=30)).timestamp()), "open": 2001, "high": 2003, "low": 2000, "close": 2002},
+    ]
+    agents = [
+        AgentEvidencePayload(
+            agent_id=name, schema_version="1.0", scope="XAUUSD",
+            as_of=now.isoformat(), source_ids=[f"feed:{name}"],
+            data_quality="valid", confidence=0.95, stance="bullish",
+            rationale="test evidence",
+        )
+        for name in ("technical", "news")
+    ]
+    payload = BrainPipelinePayload(
+        symbol="XAUUSD", bars=bars, expected_interval_seconds=30,
+        market_as_of=now.isoformat(), agents=agents,
+        calendar_valid=True, emergency_stop=False, spread_pips=1,
+        behavior={
+            "daily_loss_pct": 0.1, "weekly_loss_pct": 0.2, "peak_drawdown_pct": 0.5,
+            "trades_today": 2, "consecutive_losses": 1, "emergency_stop": False,
+            "trades_last_hour": 1, "minutes_since_last_loss": 2,
+            "risk_vs_recent_average": 1.5, "volume_multiplier_after_loss": 1.0,
+            "signal_age_seconds": 30, "normal_signal_age_seconds": 60,
+            "proposed_risk_pct": 0.025, "reward_risk": 2.0,
+            "has_stop_loss": True, "market_data_valid": True,
+            "calendar_clear": True, "spread_acceptable": True,
+        },
+    )
+    result = _endpoint(router, "/api/erp/brain/pipeline", "POST")(
+        payload, SimpleNamespace(headers={})
+    )["run"]
+    assert result["output"]["decision"]["action"] == "HOLD"
+    assert "possible_revenge_trading" in result["output"]["behavioral_guard"]["behavior_flags"]
+    assert result["output"]["risk_reservation"] is None
+    assert ledger.snapshot().active_reservations == 0
 
 def test_brain_pipeline_quarantines_stale_or_bad_market_data(tmp_path, monkeypatch):
     from datetime import datetime, timezone
