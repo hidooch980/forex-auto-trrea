@@ -27,6 +27,10 @@ input string InpBridgeSecret            = "";      // Must match Python publishe
 CTrade trade;
 datetime g_last_signal_timestamp = 0;
 string g_signal_prefix;
+double g_pending_confidence = -1.0;
+double g_pending_action = -1.0;
+double g_pending_sl_points = -1.0;
+double g_pending_spread_points = -1.0;
 
 // Signed signal file published atomically by modules.master_brain.signal_bridge.
 // File location: Terminal Common\Files\ForexAI_Bridge\<SYMBOL>.signal
@@ -345,18 +349,15 @@ string PositionMetaKey(const ulong position_id, const string field)
 
 void SaveEntryMeta(const ulong position_id, const string symbol)
 {
-   string prefix = "FAI." + symbol + ".";
-   double value = 0.0;
-   if(ReadGV(prefix + "CONFIDENCE", value))
-      GlobalVariableSet(PositionMetaKey(position_id, "CONF"), value);
-   if(ReadGV(prefix + "ACTION", value))
-      GlobalVariableSet(PositionMetaKey(position_id, "ACTION"), value);
-   if(ReadGV(prefix + "SL_POINTS", value))
-      GlobalVariableSet(PositionMetaKey(position_id, "SLPTS"), value);
-   MqlTick tick;
-   double point = SymbolInfoDouble(symbol, SYMBOL_POINT);
-   if(point > 0.0 && SymbolInfoTick(symbol, tick) && tick.ask > tick.bid)
-      GlobalVariableSet(PositionMetaKey(position_id, "SPREAD"), (tick.ask-tick.bid)/point);
+   // Capture the exact verified signal context held immediately before OrderSend.
+   if(g_pending_confidence >= 0.0)
+      GlobalVariableSet(PositionMetaKey(position_id, "CONF"), g_pending_confidence);
+   if(g_pending_action >= 0.0)
+      GlobalVariableSet(PositionMetaKey(position_id, "ACTION"), g_pending_action);
+   if(g_pending_sl_points >= 0.0)
+      GlobalVariableSet(PositionMetaKey(position_id, "SLPTS"), g_pending_sl_points);
+   if(g_pending_spread_points >= 0.0)
+      GlobalVariableSet(PositionMetaKey(position_id, "SPREAD"), g_pending_spread_points);
 }
 
 double PositionMeta(const ulong position_id, const string field)
@@ -480,8 +481,6 @@ void OnTick()
    // A signed HOLD message explicitly clears any older directional intent.
    if(action == 0.0)
       return;
-   if(InpRequireBrainApproval && !InpRequireBrainApproval) // approval is mandatory in the signed bridge
-      return;
    if(confidence < InpMinConfidence || confidence > 1.0 || sl_points <= 0.0)
       return;
 
@@ -510,6 +509,11 @@ void OnTick()
    double volume = CalculateRiskVolume(order_type, entry, stop);
    if(volume <= 0.0)
       return;
+
+   g_pending_confidence = confidence;
+   g_pending_action = action;
+   g_pending_sl_points = sl_points;
+   g_pending_spread_points = spread_points;
 
    trade.SetExpertMagicNumber(InpMagicNumber);
    trade.SetDeviationInPoints(InpDeviationPoints);
