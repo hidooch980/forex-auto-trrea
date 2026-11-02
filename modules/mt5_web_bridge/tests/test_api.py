@@ -45,3 +45,9 @@ def test_extra_credentials_rejected(client):
     p=sample();p["password"]="never-accept"
     r=client.post("/api/mt5/bridge/ingest",headers={"Authorization":"Bearer "+"t"*48},json=p)
     assert r.status_code==422
+
+
+def test_future_snapshot_rejected(client):
+    p=sample();p["timestamp"]+=120
+    r=client.post("/api/mt5/bridge/ingest",headers={"Authorization":"Bearer "+"t"*48},json=p)
+    assert r.status_code==422
