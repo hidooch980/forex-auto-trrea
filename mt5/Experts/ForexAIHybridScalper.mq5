@@ -1,11 +1,11 @@
 //+------------------------------------------------------------------+
 //| Forex AI Hybrid Scalper - MT5 Expert Advisor                     |
-//| Signal bridge: terminal Global Variables published by a trusted  |
+//| Signal bridge: signed local file published by the Python brain.  |
 //| local bridge connected to the Python Master Brain.               |
 //| Live execution is OFF by default.                                 |
 //+------------------------------------------------------------------+
 #property strict
-#property version   "0.1.0"
+#property version   "0.2.0"
 #property description "Risk-gated MT5 execution shell for Forex AI Hybrid Scalper"
 
 #include <Trade/Trade.mqh>
