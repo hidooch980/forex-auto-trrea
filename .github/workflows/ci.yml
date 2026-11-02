@@ -28,6 +28,8 @@ jobs:
         run: python -m pytest -q modules/data_pipeline/tests
       - name: Agent performance memory tests
         run: python -m pytest -q modules/performance_memory/tests
+      - name: Cognitive cell learning tests
+        run: python -m pytest -q modules/cognitive_cells/tests
       - name: Unified ERP API integration tests
         run: python -m pytest -q modules/erp_api/tests
       - name: XAUUSD Phantom four-engine tests
