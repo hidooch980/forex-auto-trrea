@@ -1,0 +1,91 @@
+name: Android APK
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+    paths:
+      - "android/**"
+      - ".github/workflows/android-apk.yml"
+  pull_request:
+    paths:
+      - "android/**"
+      - ".github/workflows/android-apk.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  debug-apk:
+    if: "!startsWith(github.ref, 'refs/tags/')"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.9"
+      - name: Build debug APK
+        run: gradle --no-daemon -p android :app:assembleDebug
+      - uses: actions/upload-artifact@v4
+        with:
+          name: forex-ai-android-debug
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 14
+
+  signed-release:
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.9"
+      - name: Validate release signing secrets
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          STORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          test -n "$KEYSTORE_B64" || (echo "Missing ANDROID_KEYSTORE_BASE64 secret" && exit 1)
+          test -n "$STORE_PASSWORD" || (echo "Missing ANDROID_KEYSTORE_PASSWORD secret" && exit 1)
+          test -n "$KEY_ALIAS" || (echo "Missing ANDROID_KEY_ALIAS secret" && exit 1)
+          test -n "$KEY_PASSWORD" || (echo "Missing ANDROID_KEY_PASSWORD secret" && exit 1)
+      - name: Prepare signing key
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          STORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          echo "$KEYSTORE_B64" | base64 --decode > "$RUNNER_TEMP/forex-ai-release.jks"
+          echo "ANDROID_KEYSTORE_PATH=$RUNNER_TEMP/forex-ai-release.jks" >> "$GITHUB_ENV"
+          echo "ANDROID_KEYSTORE_PASSWORD=$STORE_PASSWORD" >> "$GITHUB_ENV"
+          echo "ANDROID_KEY_ALIAS=$KEY_ALIAS" >> "$GITHUB_ENV"
+          echo "ANDROID_KEY_PASSWORD=$KEY_PASSWORD" >> "$GITHUB_ENV"
+      - name: Build signed release APK
+        env:
+          RELEASE_VERSION: ${{ github.ref_name }}
+        run: |
+          VERSION="${RELEASE_VERSION#v}"
+          VERSION_CODE="$(git rev-list --count HEAD)"
+          gradle --no-daemon -p android :app:assembleRelease -PappVersionName="$VERSION" -PappVersionCode="$VERSION_CODE"
+          mkdir -p release
+          cp android/app/build/outputs/apk/release/app-release.apk release/forex-ai-release.apk
+          sha256sum release/forex-ai-release.apk > release/forex-ai-release.apk.sha256
+      - name: Publish signed APK
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            release/forex-ai-release.apk
+            release/forex-ai-release.apk.sha256
+          generate_release_notes: true
