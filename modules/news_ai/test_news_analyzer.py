@@ -84,3 +84,21 @@ def test_news_contract_rejects_missing_locale_content():
         assert False, "missing localized analysis must be rejected"
     except ValueError:
         pass
+
+
+
+def test_news_contract_rejects_naive_timestamps_and_unknown_categories():
+    from news_schema import validate_news_article
+
+    article = {
+        "id": "sample-3", "source": "Desk", "url": "https://example.com/story",
+        "published_at": datetime(2026, 1, 1),
+        "category": "rumor",
+        "title": {"fa": "عنوان"}, "summary": {"fa": "خلاصه"},
+        "analysis": {"fa": "تحلیل"},
+    }
+    try:
+        validate_news_article(article)
+        assert False, "naive timestamp must be rejected"
+    except ValueError as exc:
+        assert "timezone-aware" in str(exc)
