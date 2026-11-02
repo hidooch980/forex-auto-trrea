@@ -330,7 +330,7 @@ self.addEventListener("fetch", event => {
         caches.open(CACHE).then(cache => cache.put("/app", copy));
       }
       return response;
-    }).catch(async () => (await caches.match(url.pathname === "/" ? "/app" : url.pathname)) || (await caches.match("/offline"))));
+    }).catch(async () => (await caches.match(url.pathname)) || (await caches.match("/offline"))));
     return;
   }
   if (SHELL.includes(url.pathname)) {
