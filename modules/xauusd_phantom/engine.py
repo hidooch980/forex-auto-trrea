@@ -88,7 +88,31 @@ def _geometry_valid(signal: EngineSignal) -> bool:
         return False
     if signal.side == Side.BUY:
         return signal.stop_loss < signal.entry < signal.take_profit
-    return signal.take_profit < signal.entry < signal.stop_loss
+    if signal.side == Side.SELL:
+        return signal.take_profit < signal.entry < signal.stop_loss
+    return False
+
+
+def _config_valid(config: PhantomConfig) -> bool:
+    numeric_limits = (
+        config.min_confidence, config.min_reward_risk,
+        config.max_engine_risk_pct, config.max_total_open_risk_pct,
+        config.max_spread_points, config.trailing_atr_multiple,
+        config.profit_vault_share,
+    )
+    if not all(_valid_number(float(value)) for value in numeric_limits):
+        return False
+    return (
+        0 <= config.min_confidence <= 1
+        and config.min_reward_risk > 0
+        and config.max_engine_risk_pct > 0
+        and config.max_total_open_risk_pct > 0
+        and config.max_open_positions_per_engine >= 1
+        and config.max_spread_points > 0
+        and config.max_signal_age_seconds >= 0
+        and config.trailing_atr_multiple > 0
+        and 0 <= config.profit_vault_share <= 1
+    )
 
 
 def evaluate_cycle(
@@ -103,9 +127,20 @@ def evaluate_cycle(
     emergency_stop: bool = False,
     config: PhantomConfig = PhantomConfig(),
 ) -> PhantomDecision:
-    """Approve candidate proposals under one shared fail-closed XAU risk budget."""
+    """Approve proposals under one shared fail-closed XAU risk budget.
+
+    open_risks must include exposure from both filled positions and pending
+    orders. OCO siblings should be represented once at their maximum possible
+    loss, not summed as if both could fill simultaneously.
+    """
     blocked: list[tuple[str, str]] = []
     approved: list[EngineSignal] = []
+    if not _config_valid(config):
+        return PhantomDecision((), tuple((s.engine, "invalid_config") for s in signals),
+                               float("inf"))
+    if not isinstance(now, int) or isinstance(now, bool):
+        return PhantomDecision((), tuple((s.engine, "invalid_cycle_time") for s in signals),
+                               float("inf"))
     if emergency_stop:
         return PhantomDecision((), tuple((s.engine, "emergency_stop") for s in signals),
                                sum(p.risk_pct for p in open_risks))
@@ -140,7 +175,9 @@ def evaluate_cycle(
             reason = "duplicate_engine_signal"
         else:
             seen.add(signal.engine)
-            if not _geometry_valid(signal):
+            if not isinstance(signal.timestamp, int) or isinstance(signal.timestamp, bool):
+                reason = "invalid_signal_timestamp"
+            elif not _geometry_valid(signal):
                 reason = "invalid_signal_geometry"
             elif signal.confidence < config.min_confidence or signal.confidence > 1:
                 reason = "confidence_gate"
