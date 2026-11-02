@@ -146,3 +146,6 @@ These additions adapt research practices from public quant-finance skill catalog
 - [MT5 copy_rates_from_pos](https://www.mql5.com/en/docs/python_metatrader5/mt5copyratesfrompos_py) — bar retrieval semantics; position zero is the current/forming bar, so completed-bar research must handle it separately.
 
 **Integration status:** these are architecture, workflow and quality-gate foundations. They do not mean live market/news/calendar providers are connected, specialist LLM agents are running autonomously, or MT5 live execution is enabled. The MT5 Python adapter remains read-only and live trading remains disabled.
+
+
+Agent outputs are validated by `modules/agent_contracts`: every specialist result must include a UTC timestamp, source identifiers, valid data-quality state, bounded confidence, stance and rationale. Stale, future-dated, source-free or degraded outputs are rejected before orchestration.
