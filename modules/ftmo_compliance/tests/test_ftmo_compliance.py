@@ -43,6 +43,14 @@ def test_one_step_consistency_is_fifty_percent_and_not_a_breach():
     assert result["can_open_new_trade"] is True
 
 
+def test_legacy_one_step_best_day_rule_uses_positive_days_profit():
+    result = evaluate_account("1_step", "funded",
+        base(best_day_profit=600, total_closed_profit=1000,
+             positive_days_profit=1200, consistency_rule="best_day"))
+    assert result["consistency"]["rule"] == "best_day"
+    assert result["consistency"]["satisfied"] is False
+
+
 def test_two_step_has_four_minimum_days_only_in_evaluation():
     assert not evaluate_account("2_step", "verification", base(trading_days=3))["minimum_days_satisfied"]
     assert evaluate_account("2_step", "funded", base(trading_days=0))["minimum_days_satisfied"]
