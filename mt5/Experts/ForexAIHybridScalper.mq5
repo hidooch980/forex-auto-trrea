@@ -21,19 +21,17 @@ input int    InpMaxSignalAgeSeconds     = 60;
 input double InpRewardRisk              = 1.50;
 input int    InpDeviationPoints         = 10;
 input bool   InpRequireBrainApproval    = true;
-input string InpJournalFile             = "ForexAI_TradeJournal.csv";
+input string InpJournalFile             = "ForexAI_TradeJournal_v2.csv";
+input string InpBridgeSecret            = "";      // Must match Python publisher secret (32+ chars)
 
 CTrade trade;
 datetime g_last_signal_timestamp = 0;
 string g_signal_prefix;
 
-// Expected terminal Global Variables (set by a trusted bridge):
-// FAI.<SYMBOL>.ACTION       = 1 (BUY), -1 (SELL), 0 (no signal)
-// FAI.<SYMBOL>.CONFIDENCE   = [0..1]
-// FAI.<SYMBOL>.SL_POINTS    = stop distance in points
-// FAI.<SYMBOL>.TIMESTAMP    = Unix timestamp (TimeCurrent-compatible)
-// FAI.<SYMBOL>.APPROVED     = 1 only when Master Brain approved
-// FAI.GLOBAL.EMERGENCY_STOP = 1 to block new entries
+// Signed signal file published atomically by modules.master_brain.signal_bridge.
+// File location: Terminal Common\Files\ForexAI_Bridge\<SYMBOL>.signal
+// The HMAC-SHA256 is verified locally before any directional signal is accepted.
+// FAI.GLOBAL.EMERGENCY_STOP remains a terminal Global Variable kill switch.
 
 string ConsumedSignalKey()
 {
@@ -163,6 +161,124 @@ bool StopsAreValid(double entry, double stop, double target)
    double min_distance = (double)stops_level * point;
    if(MathAbs(entry - stop) < min_distance || MathAbs(target - entry) < min_distance)
       return false;
+   return true;
+}
+
+
+
+bool Sha256(const uchar &data[], uchar &digest[])
+{
+   uchar empty_key[];
+   ArrayResize(empty_key, 0);
+   return CryptEncode(CRYPT_HASH_SHA256, data, empty_key, digest) == 32;
+}
+
+string HmacSha256Hex(const string message, const string secret)
+{
+   uchar key[], msg[];
+   if(StringToCharArray(secret, key, 0, WHOLE_ARRAY, CP_UTF8) <= 1)
+      return "";
+   if(ArraySize(key) > 0 && key[ArraySize(key)-1] == 0)
+      ArrayResize(key, ArraySize(key)-1);
+   if(StringToCharArray(message, msg, 0, WHOLE_ARRAY, CP_UTF8) <= 1)
+      return "";
+   if(ArraySize(msg) > 0 && msg[ArraySize(msg)-1] == 0)
+      ArrayResize(msg, ArraySize(msg)-1);
+
+   uchar key_hash[];
+   if(ArraySize(key) > 64)
+   {
+      if(!Sha256(key, key_hash))
+         return "";
+      ArrayCopy(key, key_hash);
+   }
+   uchar ipad[], opad[];
+   ArrayResize(ipad, 64);
+   ArrayResize(opad, 64);
+   for(int i=0; i<64; i++)
+   {
+      uchar value = (i < ArraySize(key) ? key[i] : 0);
+      ipad[i] = (uchar)(value ^ 0x36);
+      opad[i] = (uchar)(value ^ 0x5c);
+   }
+
+   uchar inner[];
+   ArrayResize(inner, 64 + ArraySize(msg));
+   ArrayCopy(inner, ipad, 0, 0, 64);
+   if(ArraySize(msg) > 0)
+      ArrayCopy(inner, msg, 64, 0, ArraySize(msg));
+   uchar inner_hash[];
+   if(!Sha256(inner, inner_hash))
+      return "";
+
+   uchar outer[];
+   ArrayResize(outer, 64 + ArraySize(inner_hash));
+   ArrayCopy(outer, opad, 0, 0, 64);
+   ArrayCopy(outer, inner_hash, 64, 0, ArraySize(inner_hash));
+   uchar digest[];
+   if(!Sha256(outer, digest))
+      return "";
+
+   string hex = "";
+   for(int j=0; j<ArraySize(digest); j++)
+      hex += StringFormat("%02x", (int)digest[j]);
+   return hex;
+}
+
+bool ReadBridgeSignal(double &action, double &confidence,
+                      double &sl_points, datetime &signal_time)
+{
+   string filename = "ForexAI_Bridge\\" + _Symbol + ".signal";
+   int handle = FileOpen(filename, FILE_READ|FILE_CSV|FILE_ANSI|FILE_COMMON, '|');
+   if(handle == INVALID_HANDLE)
+      return false;
+
+   string version = FileReadString(handle);
+   string symbol = FileReadString(handle);
+   string action_text = FileReadString(handle);
+   string confidence_text = FileReadString(handle);
+   string sl_text = FileReadString(handle);
+   string timestamp_text = FileReadString(handle);
+   string approved_text = FileReadString(handle);
+   string nonce = FileReadString(handle);
+   string signature = FileReadString(handle);
+   FileClose(handle);
+
+   if(version != "FAI1" || symbol != _Symbol ||
+      (action_text != "BUY" && action_text != "SELL" && action_text != "HOLD") ||
+      (approved_text != "0" && approved_text != "1") ||
+      StringLen(nonce) != 32 || StringLen(signature) != 64)
+      return false;
+
+   string canonical = version + "|" + symbol + "|" + action_text + "|" +
+                      confidence_text + "|" + sl_text + "|" + timestamp_text +
+                      "|" + approved_text + "|" + nonce;
+   string expected = HmacSha256Hex(canonical, InpBridgeSecret);
+   if(expected == "" || expected != signature)
+   {
+      Print("ForexAI bridge: signature verification failed.");
+      return false;
+   }
+
+   confidence = StringToDouble(confidence_text);
+   sl_points = StringToDouble(sl_text);
+   long timestamp = StringToInteger(timestamp_text);
+   if(confidence < 0.0 || confidence > 1.0 || timestamp <= 0)
+      return false;
+
+   if(action_text == "HOLD")
+   {
+      if(approved_text != "0")
+         return false;
+      action = 0.0;
+      signal_time = (datetime)timestamp;
+      return true;
+   }
+
+   if(approved_text != "1" || sl_points <= 0.0)
+      return false;
+   action = (action_text == "BUY" ? 1.0 : -1.0);
+   signal_time = (datetime)timestamp;
    return true;
 }
 
@@ -358,27 +474,18 @@ void OnTick()
       return;
 
    double action = 0.0, confidence = 0.0, sl_points = 0.0;
-   double timestamp_value = 0.0, approved = 0.0;
-   string action_key = g_signal_prefix + "ACTION";
-   if(!ReadGV(action_key, action) ||
-      !ReadGV(g_signal_prefix + "CONFIDENCE", confidence) ||
-      !ReadGV(g_signal_prefix + "SL_POINTS", sl_points) ||
-      !ReadGV(g_signal_prefix + "TIMESTAMP", timestamp_value))
+   datetime signal_time = 0;
+   if(!ReadBridgeSignal(action, confidence, sl_points, signal_time))
+      return;
+   // A signed HOLD message explicitly clears any older directional intent.
+   if(action == 0.0)
+      return;
+   if(InpRequireBrainApproval && !InpRequireBrainApproval) // approval is mandatory in the signed bridge
+      return;
+   if(confidence < InpMinConfidence || confidence > 1.0 || sl_points <= 0.0)
       return;
 
-   if(InpRequireBrainApproval &&
-      (!ReadGV(g_signal_prefix + "APPROVED", approved) || approved < 1.0))
-      return;
-
-   if(action != 1.0 && action != -1.0)
-      return;
-   if(confidence < InpMinConfidence || confidence > 1.0)
-      return;
-   if(sl_points <= 0.0 || timestamp_value <= 0.0)
-      return;
-
-   datetime signal_time = (datetime)timestamp_value;
-   datetime now = TimeCurrent();
+   datetime now = TimeGMT();
    if(signal_time > now || (now - signal_time) > InpMaxSignalAgeSeconds)
       return;
    double consumed_timestamp = 0.0;
@@ -433,6 +540,11 @@ int OnInit()
       InpMaxSignalAgeSeconds <= 0 || InpMaxSpreadPoints <= 0.0)
       return INIT_PARAMETERS_INCORRECT;
 
+   if(InpEnableLiveTrading && StringLen(InpBridgeSecret) < 32)
+   {
+      Print("ForexAI bridge: live trading requires a 32+ character shared secret.");
+      return INIT_PARAMETERS_INCORRECT;
+   }
    g_signal_prefix = "FAI." + _Symbol + ".";
    trade.SetExpertMagicNumber(InpMagicNumber);
    Print("Forex AI Hybrid Scalper initialized. Live trading: ",
