@@ -106,3 +106,24 @@ This is the foundation for a complete localization rollout, not a claim that
 every component document, external provider message, MT5 terminal message or
 all dynamic server-generated content has already been translated. Live news
 and market-data providers remain unconnected.
+
+
+## Market pulse and signal performance
+
+The four-language control center now includes a market analytics workspace:
+- Signal performance cards: win rate, average net profit, net profit and profit factor.
+- Fear & Greed index interface, requiring measured momentum, breadth, volatility and safe-haven-demand components.
+- Live market map driven only by provider-supplied price changes.
+- Signal-performance heatmap and symbol ranking sorted by average net profit.
+- Authenticated `/api/analytics/overview` endpoint.
+
+The analytics calculations live in `modules/analytics` and have independent unit
+tests. They accept only completed realized trade outcomes; open trades and
+partial exits must not be counted as completed results. The current MT5 journal
+is deal-oriented, so a position-lifecycle reconciliation layer is required
+before it can be treated as a complete closed-trade source.
+
+**Integration status:** the dashboard and calculation layer are implemented,
+but live price data, Fear & Greed source components and reconciled closed-trade
+history are not connected. The API therefore reports unavailable states and
+does not fabricate performance values. See `modules/analytics/README.md`.
