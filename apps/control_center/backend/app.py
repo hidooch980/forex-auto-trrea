@@ -96,7 +96,7 @@ def change_user_active(user_id: int, active: bool, request: Request):
     try:
         changed = auth.set_user_active(user_id, active, actor_user_id=actor["id"])
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+        raise HTTPException(status_code=400, detail=translate(str(exc), request.headers.get("x-ui-language"))) from exc
     if not changed:
         raise HTTPException(status_code=404, detail=translate("User not found.", request.headers.get("x-ui-language")))
     return {"ok": True, "user_id": user_id, "active": active}
