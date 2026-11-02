@@ -623,6 +623,7 @@ html[dir=rtl] .nav button:hover{transform:translateX(-3px)}html[dir=ltr] .nav bu
   <button class="active" data-page="overview" onclick="goPage('overview',this)"><span class="ico">▦</span>نمای کلی</button>
   <button data-page="signals" onclick="goPage('signals',this)"><span class="ico">⌁</span>سیگنال‌ها</button>
   <button data-page="market-radar" onclick="goPage('market-radar',this)"><span class="ico">⌖</span>رادار بازار</button>
+  <button data-page="backtest" onclick="goPage('backtest',this)"><span class="ico">▧</span>آزمایشگاه بک‌تست</button>
   <button data-page="news" onclick="goPage(&quot;news&quot;,this)"><span class="ico">▤</span>خبرها</button>
   <button data-page="performance" onclick="goPage(&quot;performance&quot;,this)"><span class="ico">▥</span>عملکرد و نبض بازار</button>
   <button data-page="analysis" onclick="goPage('analysis',this)"><span class="ico">◫</span>تحلیل بازار</button>
@@ -672,6 +673,29 @@ html[dir=rtl] .nav button:hover{transform:translateX(-3px)}html[dir=ltr] .nav bu
     <article class="card"><div class="metric-foot">جهت‌گیری پژوهشی</div><div class="metric-value" id="radar-stance">—</div></article>
    </div>
    <div class="notice">خروجی صرفاً تحلیل تکنیکی است، نه توصیه سرمایه‌گذاری یا سیگنال اجرایی. تا زمان اتصال فید معتبر، اعداد را دستی/از منبع خودت وارد کن. اجرای زنده همچنان غیرفعال است.</div>
+  </div>
+ </section>
+ <section id="page-backtest" class="page">
+  <div class="card">
+   <div class="section-head"><h3>آزمایشگاه بک‌تست EMA</h3><span class="pill">شبیه‌سازی تاریخی · بدون سفارش</span></div>
+   <p class="eyebrow">کندل‌های تاریخی OHLC را وارد کن. سیگنال در بسته‌شدن کندل محاسبه و ورود/خروج در بازشدن کندل بعدی شبیه‌سازی می‌شود؛ هزینهٔ معامله هم لحاظ می‌شود.</p>
+   <div class="actions">
+    <input id="bt-fast" class="field" type="number" min="2" max="199" value="9" aria-label="EMA سریع" placeholder="EMA سریع">
+    <input id="bt-slow" class="field" type="number" min="3" max="200" value="21" aria-label="EMA کند" placeholder="EMA کند">
+    <input id="bt-cost" class="field" type="number" min="0" max="1000" step="0.1" value="1" aria-label="هزینه هر سمت بر حسب bps" placeholder="هزینه هر سمت bps">
+    <input id="bt-equity" class="field" type="number" min="1" value="10000" aria-label="سرمایه اولیه" placeholder="سرمایه اولیه">
+   </div>
+   <label for="bt-candles" class="eyebrow">JSON کندل‌ها (timestamp, open, high, low, close)</label>
+   <textarea id="bt-candles" class="field" rows="9" style="width:100%;font-family:monospace;direction:ltr;text-align:left" spellcheck="false" placeholder='[{"timestamp":"2025-01-01T00:00:00Z","open":1.1,"high":1.102,"low":1.099,"close":1.101}]'></textarea>
+   <div class="actions" style="margin-top:12px"><button class="primary" id="bt-run" onclick="runBacktest()">اجرای بک‌تست</button><button class="ghost" onclick="document.getElementById('bt-candles').value=''">پاک‌کردن داده</button></div>
+   <div id="bt-message" class="status" aria-live="polite">بک‌تست فقط روی دادهٔ تاریخی واردشده اجرا می‌شود.</div>
+   <div id="bt-result" class="grid" style="margin-top:14px" hidden>
+    <article class="card"><div class="metric-foot">بازده کل</div><div class="metric-value" id="bt-return">—</div></article>
+    <article class="card"><div class="metric-foot">حداکثر افت سرمایه</div><div class="metric-value" id="bt-dd">—</div></article>
+    <article class="card"><div class="metric-foot">نرخ برد</div><div class="metric-value" id="bt-win">—</div></article>
+    <article class="card"><div class="metric-foot">تعداد معاملات</div><div class="metric-value" id="bt-count">—</div></article>
+   </div>
+   <div class="notice">نتیجه به کیفیت داده، اسپرد، لغزش، سوآپ، کمیسیون، ساعات بازار و شکاف قیمت حساس است. این مدل ساده است و جایگزین آزمون خارج از نمونه، تست دمو یا تأیید مستقل نیست. اجرای زنده غیرفعال می‌ماند.</div>
   </div>
  </section>
  <section id="page-signals" class="page"><div class="card"><div class="section-head"><h3>سیگنال‌های معاملاتی</h3><span class="pill">اتصال زنده موجود نیست</span></div><p class="eyebrow">پس از اتصال منبع داده و موتور تولید سیگنال، نقاط ورود، حد ضرر، اهداف سود و نسبت ریسک به بازده در این بخش نمایش داده می‌شوند.</p><div class="signal"><div class="pair"><div class="coin">Au</div><div><b>XAUUSD · طلا</b><small>نمونه نمایشی، نه سیگنال واقعی</small></div></div><span class="pill">بدون سیگنال زنده</span></div><div class="signal"><div class="pair"><div class="coin">€</div><div><b>EURUSD</b><small>منتظر اتصال بازار</small></div></div><span class="pill">بدون سیگنال زنده</span></div></div></section>
@@ -761,13 +785,31 @@ function applyLanguage(locale){activeLocale=["fa","en","ar","tr"].includes(local
  const title=document.getElementById("page-title");if(title&&currentPage)title.textContent=t(pageTitles[currentPage]);const crumb=document.getElementById("crumb");if(crumb&&currentPage)crumb.textContent=t(pageTitles[currentPage]);try{localStorage.setItem("forexai-locale",activeLocale);}catch(e){} }
 function setLanguage(locale){applyLanguage(locale);if(currentUser){document.getElementById("role-label").textContent=t("نقش: ")+t(currentUser.role);refreshStatus();if(currentPage==="news")loadNews();if(currentPage==="performance")loadPerformance();if(currentPage==="users")loadUsers();}}
 let currentPage="overview";
-const pageTitles={performance:"عملکرد و نبض بازار",news:"اخبار بازار",overview:"داشبورد معاملاتی",signals:"سیگنال‌های معاملاتی","market-radar":"رادار بازار",analysis:"تحلیل بازار",simulator:"شبیه‌ساز تصمیم",modules:"ماژول‌های هوش مصنوعی",ftmo:"حساب‌های FTMO",users:"مدیریت کاربران"};
+const pageTitles={performance:"عملکرد و نبض بازار",news:"اخبار بازار",overview:"داشبورد معاملاتی",signals:"سیگنال‌های معاملاتی","market-radar":"رادار بازار",backtest:"آزمایشگاه بک‌تست",analysis:"تحلیل بازار",simulator:"شبیه‌ساز تصمیم",modules:"ماژول‌های هوش مصنوعی",ftmo:"حساب‌های FTMO",users:"مدیریت کاربران"};
 let csrfToken='',currentUser=null;
 async function api(path,options={}){const headers=Object.assign({"X-UI-Language":activeLocale},options.headers||{});if(options.method&&options.method!=='GET')headers['X-CSRF-Token']=csrfToken;return fetch(path,Object.assign({credentials:'same-origin'},options,{headers}));}
 async function login(){const msg=document.getElementById('login-message');try{const r=await fetch('/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json','X-UI-Language':activeLocale},body:JSON.stringify({username:document.getElementById('login-user').value,password:document.getElementById('login-pass').value})});const d=await r.json();if(!r.ok)throw Error(t('ورود ناموفق بود')+(d.detail?' · '+d.detail:''));csrfToken=d.csrf_token;document.getElementById('login-pass').value='';showApp(d.user);}catch(e){msg.textContent=e.message;}}
 function showApp(user){currentUser=user;document.getElementById('login-screen').hidden=true;document.getElementById('app-shell').hidden=false;document.getElementById('account-label').textContent=user.username;document.getElementById('role-label').textContent=t('نقش: ')+t(user.role);document.getElementById('avatar').textContent=(user.username||'U').slice(0,1).toUpperCase();document.getElementById('users-nav').hidden=user.role!=='admin';refreshStatus();loadFtmoProducts();loadFtmoAccounts();if(user.role==='admin')loadUsers();}
 async function restoreSession(){try{const r=await fetch('/api/auth/me',{credentials:'same-origin'});if(!r.ok)return;const d=await r.json();csrfToken=d.csrf_token;showApp(d.user);}catch(e){}}
 function goPage(name,button){currentPage=name;if(name==='users'&&(!currentUser||currentUser.role!=='admin'))return;document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));document.getElementById('page-'+name).classList.add('active');document.querySelectorAll('.nav button').forEach(b=>b.classList.remove('active'));if(button)button.classList.add('active');if(name==='news')loadNews();if(name==='performance')loadPerformance();if(name==='ftmo'){loadFtmoProducts();loadFtmoAccounts();}document.getElementById('page-title').textContent=t(pageTitles[name]);document.getElementById('crumb').textContent=t(pageTitles[name]);}
+async function runBacktest(){
+ const msg=document.getElementById('bt-message'),button=document.getElementById('bt-run'),out=document.getElementById('bt-result');
+ out.hidden=true;button.disabled=true;msg.textContent='در حال اجرای شبیه‌سازی...';
+ try{
+  const candles=JSON.parse(document.getElementById('bt-candles').value);
+  if(!Array.isArray(candles))throw Error('ورودی باید آرایه‌ای از کندل‌ها باشد.');
+  const payload={candles,fast_period:Number(document.getElementById('bt-fast').value),slow_period:Number(document.getElementById('bt-slow').value),cost_bps_per_side:Number(document.getElementById('bt-cost').value),initial_equity:Number(document.getElementById('bt-equity').value)};
+  const response=await api('/api/backtest/run',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+  const data=await response.json();if(!response.ok)throw Error(data.detail||'بک‌تست ناموفق بود.');
+  const r=data.result;
+  document.getElementById('bt-return').textContent=Number(r.total_return_pct).toFixed(2)+'%';
+  document.getElementById('bt-dd').textContent=Number(r.max_drawdown_pct).toFixed(2)+'%';
+  document.getElementById('bt-win').textContent=Number(r.win_rate_pct).toFixed(1)+'%';
+  document.getElementById('bt-count').textContent=String(r.trade_count);
+  out.hidden=false;msg.textContent='بک‌تست تمام شد · '+r.bars+' کندل · سرمایه نهایی '+Number(r.final_equity).toFixed(2)+' · اجازه اجرا: خیر';
+ }catch(e){msg.textContent='خطا: '+e.message;}
+ finally{button.disabled=false;}
+}
 async function runMarketRadar(){
  const msg=document.getElementById('radar-message'),button=document.getElementById('radar-run'),out=document.getElementById('radar-result');
  out.hidden=true;button.disabled=true;msg.textContent='در حال اعتبارسنجی و تحلیل داده‌ها...';
