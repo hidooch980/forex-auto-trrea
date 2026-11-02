@@ -2,17 +2,50 @@
 from datetime import datetime, timezone
 import re
 
-POSITIVE = {"beats", "beat", "growth", "surge", "rises", "rise", "strong", "hawkish", "upgrade", "optimistic", "recovery", "profit"}
-NEGATIVE = {"misses", "miss", "decline", "falls", "fall", "weak", "dovish", "downgrade", "recession", "crisis", "inflation", "cuts", "cut", "risk", "loss"}
+POSITIVE = {
+    "beats", "beat", "growth", "surge", "rises", "rise", "strong", "hawkish",
+    "upgrade", "optimistic", "recovery", "profit",
+    # Persian
+    "رشد", "افزایش", "تقویت", "صعود", "مثبت", "بهبود", "رونق", "پیروزی",
+    # Arabic
+    "نمو", "ارتفاع", "تعزيز", "صعود", "إيجابي", "تحسن", "انتعاش",
+    # Turkish
+    "büyüme", "artış", "yükseliş", "güçlü", "olumlu", "iyileşme", "kâr",
+}
+NEGATIVE = {
+    "misses", "miss", "decline", "falls", "fall", "weak", "dovish",
+    "downgrade", "recession", "crisis", "inflation", "cuts", "cut",
+    "risk", "loss",
+    # Persian
+    "کاهش", "ضعف", "ریزش", "منفی", "بحران", "رکود", "تورم", "زیان",
+    # Arabic
+    "انخفاض", "تراجع", "ضعف", "سلبي", "أزمة", "ركود", "تضخم", "خسارة",
+    # Turkish
+    "düşüş", "gerileme", "zayıf", "olumsuz", "kriz", "durgunluk",
+    "enflasyon", "kayıp", "risk",
+}
 CURRENCIES = {"USD", "EUR", "GBP", "JPY", "CHF", "CAD", "AUD", "NZD", "XAU"}
 
 
-def score_article(title, summary=""):
-    """Transparent baseline score in [-1, 1], not a trained NLP model."""
-    words = re.findall(r"[a-z']+", f"{title} {summary}".lower())
-    pos = sum(word in POSITIVE for word in words)
-    neg = sum(word in NEGATIVE for word in words)
-    return 0.0 if pos + neg == 0 else (pos - neg) / (pos + neg)
+def _normalize_token(value):
+    token = value.lower().replace("ı", "i").replace("ş", "s").replace("ğ", "g")
+    token = token.replace("ü", "u").replace("ö", "o").replace("ç", "c")
+    token = token.replace("ي", "ی").replace("ى", "ی").replace("ك", "ک")
+    token = re.sub(r"[\u064b-\u065f\u0670\u0640]", "", token)
+    return token
+
+
+_POSITIVE_NORMALIZED = {_normalize_token(word) for word in POSITIVE}
+_NEGATIVE_NORMALIZED = {_normalize_token(word) for word in NEGATIVE}
+
+
+def score_article(title, summary="", language="auto"):
+    """Multilingual transparent baseline score in [-1, 1], not trained NLP."""
+    words = re.findall(r"[\w']+", _normalize_token(f"{title} {summary}"))
+    positive = sum(word in _POSITIVE_NORMALIZED for word in words)
+    negative = sum(word in _NEGATIVE_NORMALIZED for word in words)
+    return 0.0 if positive + negative == 0 else (positive - negative) / (positive + negative)
+
 
 
 def analyze_news(articles, now=None, max_age_hours=24):
