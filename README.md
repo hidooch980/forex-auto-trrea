@@ -87,3 +87,22 @@ cd ../../modules/ensemble_ai && PYTHONPATH=. python -m pytest -q
 cd ../../modules/news_ai && PYTHONPATH=. python -m pytest -q
 cd ../../apps/control_center && PYTHONPATH=. python -m pytest -q tests
 ```
+
+
+## Four-language platform foundation
+
+The control center supports Persian (`fa`), English (`en`), Arabic (`ar`)
+and Turkish (`tr`) through a shared localization catalog. The selected locale
+is persisted in the browser, the document language and writing direction are
+updated (Persian/Arabic RTL; English/Turkish LTR), and common API authorization
+errors use the selected locale.
+
+News content follows an editorial localization contract: headline, summary
+and analysis are stored per language, with explicit fallback metadata rather
+than silent machine translation. The news sentiment baseline includes
+multilingual vocabulary, but it is not a trained financial NLP model.
+
+This is the foundation for a complete localization rollout, not a claim that
+every component document, external provider message, MT5 terminal message or
+all dynamic server-generated content has already been translated. Live news
+and market-data providers remain unconnected.
