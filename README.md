@@ -219,3 +219,20 @@ Core contracts:
 The ERP facade reuses the same SQLite risk ledger for every caller. Set `ERP_RISK_LEDGER_DB` to select its durable database file, or `ERP_DATA_DIR` to select its parent directory. Keep this path on persistent storage and include it in encrypted backups. All state-changing routes use the existing session, role and CSRF controls.
 
 **Important boundary:** this is the first shared API/integration layer, not completion of every external connector. Broker/MT5 execution, live market data, news/calendar providers and reconciled account history remain disconnected. The API deliberately returns `execution_allowed: false`; reserving risk is not an order submission. A trusted broker adapter must reconcile actual tickets, fills, partial fills, cancellations, closes and restart recovery before any execution path can be enabled.
+
+
+## AI brain, chained data pipeline and error center
+
+The ERP exposes a persistent, auditable decision chain:
+`INGEST → VALIDATE → FUSE → RISK_GATE → COMPLETE`.
+Raw market bars pass the existing OHLC/timestamp/freshness validator; each specialist output must pass the provenance, schema, scope and freshness contract; the hybrid Master Brain then fuses normalized specialist stances. The central persistent risk ledger is the final deterministic gate and reserves the approved risk budget before any downstream execution adapter could be considered.
+
+New API contracts:
+- `POST /api/erp/brain/pipeline` — submit bars plus provenance-carrying agent evidence; supports the `Idempotency-Key` header.
+- `GET /api/erp/brain/pipeline/health` — run counts, retryable failures and quarantined inputs.
+- `GET /api/erp/brain/pipeline/{run_id}` — full run state and ordered event trail.
+- `POST /api/erp/brain/pipeline/{run_id}/retry` — admin/trader retry for transient upstream failures only, maximum three attempts.
+
+The pipeline database is durable SQLite (WAL + FULL synchronous). Configure `ERP_PIPELINE_DB`, or use `ERP_DATA_DIR/erp_pipeline.sqlite3`. Invalid or stale evidence is quarantined and never auto-corrected. Retry is not permitted for schema, timestamp, provenance or data-quality failures. Internal exceptions are logged by type, without echoing sensitive payloads into the error message.
+
+Safety boundary: the API accepts caller-supplied bars and agent evidence; it does not itself connect to a verified market-data vendor, news calendar or MT5. The economic calendar defaults invalid and the emergency stop defaults active. Every response retains `execution_allowed: false`; a risk reservation is not an order. The current stance-to-score mapping (bullish=+1, bearish=-1, neutral=0) is a deterministic bridge, not a trained or calibrated AI model.
