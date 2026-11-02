@@ -216,6 +216,15 @@ CATALOG = {
     "شاخص محاسبه شد": {"fa": "شاخص محاسبه شد", "en": "Index calculated", "ar": "تم حساب المؤشر", "tr": "Endeks hesaplandı"},
     "بازار زنده": {"fa": "بازار زنده", "en": "Live market", "ar": "السوق المباشر", "tr": "Canlı piyasa"},
     "خبرها": {"fa": "خبرها", "en": "News", "ar": "الأخبار", "tr": "Haberler"},
+    "extreme_fear": {"fa": "ترس شدید", "en": "Extreme Fear", "ar": "خوف شديد", "tr": "Aşırı Korku"},
+    "fear": {"fa": "ترس", "en": "Fear", "ar": "خوف", "tr": "Korku"},
+    "neutral": {"fa": "خنثی", "en": "Neutral", "ar": "محايد", "tr": "Nötr"},
+    "greed": {"fa": "طمع", "en": "Greed", "ar": "طمع", "tr": "Açgözlülük"},
+    "extreme_greed": {"fa": "طمع شدید", "en": "Extreme Greed", "ar": "طمع شديد", "tr": "Aşırı Açgözlülük"},
+    "فید قیمت متصل نیست": {"fa": "فید قیمت متصل نیست", "en": "Price feed not connected", "ar": "تغذية الأسعار غير متصلة", "tr": "Fiyat akışı bağlı değil"},
+    "بازار زنده": {"fa": "بازار زنده", "en": "Live market", "ar": "السوق المباشر", "tr": "Canlı piyasa"},
+    "آمار آماده است": {"fa": "آمار آماده است", "en": "Statistics ready", "ar": "الإحصاءات جاهزة", "tr": "İstatistikler hazır"},
+    "شاخص محاسبه شد": {"fa": "شاخص محاسبه شد", "en": "Index calculated", "ar": "تم حساب المؤشر", "tr": "Endeks hesaplandı"},
 }
 ALIASES = {"fa": {}, "en": {}, "ar": {}, "tr": {}}
 for _source, _translations in CATALOG.items():
