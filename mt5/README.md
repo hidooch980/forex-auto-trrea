@@ -50,6 +50,55 @@ Example for EURUSD:
 signal authentication, stale/replay protection across restarts, and end-to-end integration
 tests still need to be implemented. Do not manually publish test signals on a live account.
 
+## Authenticated Python-to-MT5 bridge
+
+The EA now reads a signed, atomically replaced signal file from MT5's shared
+**Common\\Files** directory. It no longer consumes directional signals from
+terminal Global Variables. The emergency-stop latch remains a terminal Global
+Variable: `FAI.GLOBAL.EMERGENCY_STOP = 1`.
+
+1. Generate a random secret of at least 32 UTF-8 bytes and keep it private.
+   Set the same value in the EA input `InpBridgeSecret` and the Python
+   publisher's secret source. Do not commit the secret to GitHub.
+2. Set `common_files_dir` to the absolute MT5 Common\\Files directory
+   (usually under the user's MetaQuotes roaming data directory).
+3. After upstream data and specialist agents have produced a decision, pass
+   that exact `BrainDecision` to `publish_decision()`. The bridge publisher
+   does not invent signals or fetch prices.
+
+Example:
+
+```python
+import os
+from modules.master_brain.signal_bridge import publish_decision
+
+# decision = evaluate_market(validated_market_context, specialist_signals)
+publish_decision(
+    decision,
+    common_files_dir=r"C:\\Users\\<USER>\\AppData\\Roaming\\MetaQuotes\\Terminal\\Common\\Files",
+    secret=os.environ["FOREXAI_BRIDGE_SECRET"],
+    sl_points=validated_stop_distance_points,
+)
+```
+
+The publisher writes `ForexAI_Bridge/<SYMBOL>.signal` using a temporary file
+and atomic replacement. Each message carries a SHA-256 HMAC, UTC Unix timestamp,
+random nonce, approval flag and stop distance. The EA verifies the HMAC, symbol,
+approval, freshness and stop distance before considering a directional signal.
+A HOLD decision is also published and overwrites the prior signal. Python and
+MT5 must run on the same computer and use the same Common\\Files directory.
+
+**Security boundary:** protect the Common\\Files directory and the EA inputs.
+Anyone who can read the EA's configured secret and write the shared bridge
+folder can impersonate the publisher. Use a unique secret per terminal/account
+and rotate it if exposed. This local file bridge is not a remote/cloud transport.
+
+This transport only carries decisions that an upstream caller already created.
+It does not provide live price feeds, economic-calendar validation, agent
+generation, automatic stop-distance calculation, or order execution validation.
+Live trading remains disabled by default. Verify the publisher and EA together
+on a demo terminal before enabling anything.
+
 ## Trade journal (CSV)
 
 The EA records deal events belonging to its configured magic number through
