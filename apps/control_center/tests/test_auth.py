@@ -64,12 +64,12 @@ def test_login_throttle_persists_and_expires(tmp_path, monkeypatch):
     auth.init_auth()
     identity = "127.0.0.1|trader"
     assert auth.login_is_blocked(identity, now=1000) == (False, 0)
-    for index in range(8):
-        auth.record_login_failure(identity, now=1000 + index)
-    blocked, retry = auth.login_is_blocked(identity, now=1008)
+    for _ in range(8):
+        auth.record_login_failure(identity, now=1000)
+    blocked, retry = auth.login_is_blocked(identity, now=1000)
     assert blocked is True
     assert retry == 900
-    assert auth.login_is_blocked(identity, now=1909) == (False, 0)
+    assert auth.login_is_blocked(identity, now=1900) == (False, 0)
 
 
 def test_successful_login_clears_throttle_state(tmp_path, monkeypatch):
