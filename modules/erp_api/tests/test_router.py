@@ -8,10 +8,10 @@ from modules.risk_state_store import PersistentRiskLedger, RiskLimits
 
 
 def _router(tmp_path, monkeypatch=None):
-    if monkeypatch is not None:
-        monkeypatch.setenv("ERP_PIPELINE_DB", str(tmp_path / "pipeline.sqlite3"))
-        monkeypatch.setenv("ERP_PERFORMANCE_DB", str(tmp_path / "performance.sqlite3"))
-        monkeypatch.setenv("ERP_CELLS_DB", str(tmp_path / "cells.sqlite3"))
+    import os
+    os.environ["ERP_PIPELINE_DB"] = str(tmp_path / "pipeline.sqlite3")
+    os.environ["ERP_PERFORMANCE_DB"] = str(tmp_path / "performance.sqlite3")
+    os.environ["ERP_CELLS_DB"] = str(tmp_path / "cells.sqlite3")
     ledger = PersistentRiskLedger(
         tmp_path / "erp.sqlite3",
         RiskLimits(max_total_risk_pct=0.10, max_engine_risk_pct=0.025),
