@@ -15,7 +15,7 @@ jobs:
           python-version: "3.11"
           cache: pip
       - name: Install lightweight test dependencies
-        run: python -m pip install --upgrade pip pytest numpy pandas fastapi pydantic
+        run: python -m pip install --upgrade pip pytest numpy pandas fastapi pydantic httpx2
       - name: Compile Python modules
         run: python -m compileall -q apps modules
       - name: Risk and behavioral guard tests
@@ -57,6 +57,10 @@ jobs:
         run: PYTHONPATH=. python -m pytest -q
       - name: Broker directory tests
         run: python -m pytest -q modules/broker_directory/tests
+      - name: Market radar tests
+        run: PYTHONPATH=. python -m pytest -q modules/market_radar/tests
+      - name: Backtest lab tests
+        run: PYTHONPATH=. python -m pytest -q modules/backtest_lab/tests
       - name: Control center tests
         working-directory: apps/control_center
         run: PYTHONPATH=. python -m pytest -q tests
