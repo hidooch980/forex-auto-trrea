@@ -167,6 +167,15 @@ CATALOG = {
     "فعال‌کردن": {"en": "Activate", "ar": "تفعيل", "tr": "Etkinleştir"},
     "مشاهده منبع": {"en": "View source", "ar": "عرض المصدر", "tr": "Kaynağı görüntüle"},
     "استراتژی: ": {"en": "Strategy: ", "ar": "الاستراتيجية: ", "tr": "Strateji: "},
+    "Username must be 3-64 letters, digits, '_' or '-'.": {"en": "Username must be 3-64 letters, digits, '_' or '-'.", "ar": "يجب أن يتكون اسم المستخدم من 3 إلى 64 حرفاً أو رقماً أو _ أو -.", "tr": "Kullanıcı adı 3-64 harf, rakam, '_' veya '-' içermelidir."},
+    "New accounts may be trader, analyst or viewer. Bootstrap admin separately.": {"en": "New accounts may be trader, analyst or viewer. Bootstrap admin separately.", "ar": "يمكن أن تكون الحسابات الجديدة متداولاً أو محللاً أو مشاهداً. أنشئ المسؤول الأول بشكل منفصل.", "tr": "Yeni hesaplar yatırımcı, analist veya görüntüleyici olabilir. Yönetici hesabını ayrı oluşturun."},
+    "Password must contain at least 14 characters.": {"en": "Password must contain at least 14 characters.", "ar": "يجب ألا تقل كلمة المرور عن 14 حرفاً.", "tr": "Şifre en az 14 karakter içermelidir."},
+    "Username already exists.": {"en": "Username already exists.", "ar": "اسم المستخدم موجود بالفعل.", "tr": "Kullanıcı adı zaten mevcut."},
+    "Symbol is not in the configured universe.": {"en": "Symbol is not in the configured universe.", "ar": "الرمز غير مدرج ضمن قائمة الأدوات المحددة.", "tr": "Sembol yapılandırılmış enstrüman listesinde değil."},
+    "خبرهای تأییدشده": {"en": "Verified articles", "ar": "الأخبار الموثوقة", "tr": "Doğrulanmış haberler"},
+    "تیتر": {"en": "Headline", "ar": "العنوان", "tr": "Başlık"},
+    "تحلیل": {"en": "Analysis", "ar": "التحليل", "tr": "Analiz"},
+    "منبع خبری": {"en": "News provider", "ar": "مزود الأخبار", "tr": "Haber sağlayıcısı"},
 }
 ALIASES = {"fa": {}, "en": {}, "ar": {}, "tr": {}}
 for _source, _translations in CATALOG.items():
