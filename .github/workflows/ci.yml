@@ -57,6 +57,8 @@ jobs:
         run: PYTHONPATH=. python -m pytest -q
       - name: Broker directory tests
         run: python -m pytest -q modules/broker_directory/tests
+      - name: Market radar tests
+        run: PYTHONPATH=. python -m pytest -q modules/market_radar/tests
       - name: Control center tests
         working-directory: apps/control_center
         run: PYTHONPATH=. python -m pytest -q tests
