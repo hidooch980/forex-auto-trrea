@@ -21,6 +21,8 @@ jobs:
       - name: Smart exit tests
         working-directory: modules/smart_exit
         run: PYTHONPATH=. python -m pytest -q
+      - name: Market data quality tests
+        run: python -m pytest -q modules/market_data_quality/tests
       - name: Ensemble guard tests
         working-directory: modules/ensemble_ai
         run: PYTHONPATH=. python -m pytest -q
