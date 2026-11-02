@@ -50,3 +50,11 @@ def test_transient_retry_is_bounded(tmp_path):
 def test_rejects_memory_database(tmp_path):
     with pytest.raises(ValueError, match="persistent SQLite"):
         PersistentPipeline(":memory:")
+
+
+def test_stage_regression_is_rejected(tmp_path):
+    pipeline = PersistentPipeline(tmp_path / "pipeline.sqlite3")
+    run_id, _ = pipeline.create({"symbol": "EURUSD"}, now=1)
+    pipeline.stage(run_id, "VALIDATE", "validated", "Evidence validated", now=2)
+    with pytest.raises(PipelineError, match="cannot move backwards"):
+        pipeline.stage(run_id, "INGEST", "bad_transition", "Attempted regression", now=3)
