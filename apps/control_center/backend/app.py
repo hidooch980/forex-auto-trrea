@@ -270,7 +270,7 @@ body{
   <button data-page="modules" onclick="goPage('modules',this)"><span class="ico">◇</span>ماژول‌های AI</button>
   <button id="users-nav" data-page="users" onclick="goPage('users',this)" hidden><span class="ico">♙</span>مدیریت کاربران</button>
  </nav>
- <div class="side-bottom"><div class="safe"><b>● حالت ایمن فعال</b>معاملات واقعی غیرفعال هستند.</div></div>
+ <div class="side-bottom"><div class="safe"><b>● حالت امن فعال</b>معاملات واقعی غیرفعال هستند.</div></div>
 </aside>
 <main>
  <header class="topbar"><div><div class="eyebrow">مرکز کنترل / <span id="crumb">نمای کلی</span></div><div class="heading" id="page-title">داشبورد معاملاتی</div></div>
