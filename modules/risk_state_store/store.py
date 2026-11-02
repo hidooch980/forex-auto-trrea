@@ -6,6 +6,7 @@ This module records risk state; it never places or modifies broker orders.
 from __future__ import annotations
 
 import sqlite3
+from contextlib import closing
 import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -53,11 +54,12 @@ class PersistentRiskLedger:
 
     def __init__(self, db_path: str | Path, limits: RiskLimits = RiskLimits()):
         self.db_path = str(db_path)
+        if self.db_path == ":memory:":
+            raise ValueError("use a persistent SQLite file; in-memory state is not restart-safe")
         self.limits = limits
         self._validate_limits()
-        if self.db_path != ":memory:":
-            Path(self.db_path).parent.mkdir(parents=True, exist_ok=True)
-        with self._connect() as db:
+        Path(self.db_path).parent.mkdir(parents=True, exist_ok=True)
+        with closing(self._connect()) as db:
             db.executescript("""
                 CREATE TABLE IF NOT EXISTS reservations (
                     reservation_id TEXT PRIMARY KEY,
@@ -98,9 +100,8 @@ class PersistentRiskLedger:
         db = sqlite3.connect(self.db_path, timeout=10, isolation_level=None)
         db.row_factory = sqlite3.Row
         db.execute("PRAGMA busy_timeout=10000")
-        if self.db_path != ":memory:":
-            db.execute("PRAGMA journal_mode=WAL")
-            db.execute("PRAGMA synchronous=FULL")
+        db.execute("PRAGMA journal_mode=WAL")
+        db.execute("PRAGMA synchronous=FULL")
         return db
 
     def _validate_limits(self):
@@ -211,9 +212,14 @@ class PersistentRiskLedger:
             ).fetchone()
             if previous and stamp < previous["marked_at"]:
                 raise RiskStateError("equity_timestamp_regression")
+            new_utc_day = bool(previous and previous["utc_day"] != day)
             daily_start = (float(previous["daily_start_equity"])
-                           if previous and previous["utc_day"] == day else float(equity))
+                           if previous and not new_utc_day else float(equity))
             high_water = max(float(previous["high_water_equity"]), float(equity)) if previous else float(equity)
+            if new_utc_day:
+                db.execute("UPDATE risk_locks SET active=0,reason='automatic UTC day rollover',changed_at=? "
+                           "WHERE lock_name='daily' AND active=1", (stamp,))
+                self._audit(db, "DAILY_LOCK_RESET", day, "new UTC trading day", stamp)
             daily_loss = max(0.0, (daily_start - float(equity)) / daily_start * 100)
             drawdown = max(0.0, (high_water - float(equity)) / high_water * 100)
             db.execute(
@@ -242,7 +248,7 @@ class PersistentRiskLedger:
         if lock_name not in {"daily", "drawdown"} or not reason.strip():
             raise ValueError("valid lock_name and non-empty reason are required")
         stamp = self._now(now)
-        with self._connect() as db:
+        with closing(self._connect()) as db:
             db.execute("BEGIN IMMEDIATE")
             row = db.execute("SELECT active FROM risk_locks WHERE lock_name=?", (lock_name,)).fetchone()
             if row and row["active"]:
@@ -254,7 +260,7 @@ class PersistentRiskLedger:
 
     def snapshot(self, *, now: int | None = None) -> RiskSnapshot:
         stamp = self._now(now)
-        with self._connect() as db:
+        with closing(self._connect()) as db:
             rows = db.execute(
                 "SELECT engine,risk_pct FROM reservations WHERE status IN ('PENDING','OPEN')"
             ).fetchall()
