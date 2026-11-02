@@ -23,6 +23,7 @@ from modules.market_data_quality import validate_bars
 from modules.master_brain.engine import AgentSignal, MarketContext, BrainConfig, evaluate_market
 from modules.performance_memory import PerformanceMemory
 from modules.cognitive_cells import CellularLearning, analyze_market_affect
+from modules.risk_behavior_guard import AccountRisk, BehaviorMetrics, TradeProposal, RiskLimits, evaluate_trade
 
 class AgentEvidencePayload(BaseModel):
     agent_id: str = Field(min_length=1, max_length=80)
@@ -65,6 +66,27 @@ class ClosedTradeOutcomePayload(BaseModel):
     closed_at: int = Field(ge=0)
     realized_return_pct: float
     forecasts: list[AgentForecastPayload] = Field(min_length=1, max_length=30)
+
+
+class TradingBehaviorPayload(BaseModel):
+    daily_loss_pct: float = Field(ge=0, le=100)
+    weekly_loss_pct: float = Field(ge=0, le=100)
+    peak_drawdown_pct: float = Field(ge=0, le=100)
+    trades_today: int = Field(ge=0, le=10000)
+    consecutive_losses: int = Field(ge=0, le=1000)
+    emergency_stop: bool = True
+    trades_last_hour: int = Field(ge=0, le=1000)
+    minutes_since_last_loss: float | None = Field(default=None, ge=0)
+    risk_vs_recent_average: float = Field(ge=0, le=100)
+    volume_multiplier_after_loss: float = Field(ge=0, le=100)
+    signal_age_seconds: float = Field(ge=0, le=1e9)
+    normal_signal_age_seconds: float = Field(default=60, gt=0, le=1e9)
+    proposed_risk_pct: float = Field(gt=0, le=100)
+    reward_risk: float = Field(ge=0, le=100)
+    has_stop_loss: bool
+    market_data_valid: bool
+    calendar_clear: bool
+    spread_acceptable: bool
 
 
 class MarketAffectPayload(BaseModel):
@@ -289,6 +311,41 @@ def build_erp_router(require_role: Callable, ledger: PersistentRiskLedger) -> AP
             "flags": list(affect.flags),
             "human_emotion_inference": False,
             "trading_effect": "HOLD_REVIEW_REQUIRED" if affect.state == "extreme" else "RESEARCH_CONTEXT_ONLY",
+        }
+
+    @router.post("/cognition/trading-behavior")
+    def cognition_trading_behavior(payload: TradingBehaviorPayload, request: Request):
+        require_role(request, "admin", "trader", "analyst", "viewer")
+        account = AccountRisk(
+            daily_loss_pct=payload.daily_loss_pct,
+            weekly_loss_pct=payload.weekly_loss_pct,
+            peak_drawdown_pct=payload.peak_drawdown_pct,
+            trades_today=payload.trades_today,
+            consecutive_losses=payload.consecutive_losses,
+            emergency_stop=payload.emergency_stop,
+        )
+        behavior = BehaviorMetrics(
+            trades_last_hour=payload.trades_last_hour,
+            minutes_since_last_loss=payload.minutes_since_last_loss,
+            risk_vs_recent_average=payload.risk_vs_recent_average,
+            volume_multiplier_after_loss=payload.volume_multiplier_after_loss,
+            signal_age_seconds=payload.signal_age_seconds,
+            normal_signal_age_seconds=payload.normal_signal_age_seconds,
+        )
+        proposal = TradeProposal(
+            risk_pct=payload.proposed_risk_pct, reward_risk=payload.reward_risk,
+            has_stop_loss=payload.has_stop_loss, market_data_valid=payload.market_data_valid,
+            calendar_clear=payload.calendar_clear, spread_acceptable=payload.spread_acceptable,
+        )
+        result = evaluate_trade(account, proposal, behavior, RiskLimits())
+        return {
+            "approved": result.approved, "reasons": list(result.reasons),
+            "behavior_flags": list(result.behavior_flags),
+            "risk_cap_pct": result.risk_cap_pct,
+            "cooldown_required_minutes": result.cooldown_required_minutes,
+            "emotion_diagnosis": False,
+            "interpretation": "objective_behavioral_proxies_only",
+            "execution_allowed": False,
         }
 
     @router.get("/catalog")
