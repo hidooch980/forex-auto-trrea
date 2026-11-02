@@ -112,6 +112,14 @@ class MasterBrainTests(unittest.TestCase):
         )
         self.assertEqual(result.risk_pct, 0.10)
 
+    def test_xau_broker_suffix_keeps_gold_risk_cap(self):
+        for symbol in ("XAUUSD.a", "XAUUSDm", "XAUEUR.pro"):
+            with self.subTest(symbol=symbol):
+                result = evaluate_market(
+                    MarketContext(symbol, requested_risk_pct=0.25), bullish_signals()
+                )
+                self.assertEqual(result.risk_pct, 0.10)
+
     def test_invalid_market_data_and_drawdown_fail_closed(self):
         result = evaluate_market(
             MarketContext("EURUSD", market_data_valid=False, drawdown_pct=5.0),
