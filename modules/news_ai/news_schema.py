@@ -79,7 +79,7 @@ def article_for_locale(article: dict[str, Any], locale: str) -> dict[str, Any]:
     content = normalized["localized"]
     selected = locale
     if not all(locale in content[field] for field in REQUIRED_LOCALIZED_FIELDS):
-        selected = "fa" if all("fa" in content[field] for field in REQUIRED_LOCALIZED_FIELDS) else "en"
+        selected = "en" if all("en" in content[field] for field in REQUIRED_LOCALIZED_FIELDS) else "fa"
     return {
         **{key: value for key, value in normalized.items() if key != "localized"},
         **{field: content[field][selected] for field in REQUIRED_LOCALIZED_FIELDS},
