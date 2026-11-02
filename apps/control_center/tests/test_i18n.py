@@ -27,3 +27,4 @@ def test_dashboard_catalog_has_four_language_values():
     assert catalog["داشبورد معاملاتی"]["ar"]
     assert catalog["داشبورد معاملاتی"]["tr"]
     assert translate("Authentication required.", "tr") == "Kimlik doğrulaması gerekli."
+    assert translate("Authentication required.", "fa") == "برای ادامه وارد حساب کاربری شوید."
