@@ -120,6 +120,17 @@ class MasterBrainTests(unittest.TestCase):
                 )
                 self.assertEqual(result.risk_pct, 0.10)
 
+    def test_config_cannot_raise_hard_xau_cap(self):
+        profile = RiskProfile(instrument_risk_caps_pct={"XAUUSD": 0.50})
+        config = BrainConfig(profile=profile)
+        for symbol in ("XAUUSD", "XAUUSD.a"):
+            with self.subTest(symbol=symbol):
+                result = evaluate_market(
+                    MarketContext(symbol, requested_risk_pct=0.50),
+                    bullish_signals(), config,
+                )
+                self.assertEqual(result.risk_pct, 0.10)
+
     def test_invalid_market_data_and_drawdown_fail_closed(self):
         result = evaluate_market(
             MarketContext("EURUSD", market_data_valid=False, drawdown_pct=5.0),
