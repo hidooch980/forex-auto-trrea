@@ -202,6 +202,45 @@ def change_user_active(user_id: int, active: bool, request: Request):
         raise HTTPException(status_code=404, detail=translate("User not found.", request.headers.get("x-ui-language")))
     return {"ok": True, "user_id": user_id, "active": active}
 
+@app.get("/api/bots/status")
+def bots_status(request: Request):
+    user, _ = current_session(request)
+    is_admin = user["role"] == "admin"
+    return {
+        "execution_allowed": False,
+        "bots": [
+            {
+                "id": "signals",
+                "name": "Signal Bot",
+                "state": "research_only",
+                "engine_available": True,
+                "market_data_connected": False,
+                "endpoint": "/api/market-radar/analyze",
+                "execution_allowed": False,
+            },
+            {
+                "id": "manager",
+                "name": "Risk Manager Bot",
+                "state": "risk_preview_only",
+                "engine_available": True,
+                "live_positions_connected": False,
+                "endpoint": "/api/risk/portfolio-preview",
+                "emergency_stop": _emergency_stop_active,
+                "execution_allowed": False,
+            },
+            {
+                "id": "users",
+                "name": "User Management Bot",
+                "state": "admin_controlled" if is_admin else "admin_only",
+                "available": is_admin,
+                "user_count": len(auth.list_users()) if is_admin else None,
+                "endpoint": "/api/users" if is_admin else None,
+                "execution_allowed": False,
+            },
+        ],
+    }
+
+
 @app.get("/api/ftmo/products")
 def ftmo_products(request: Request):
     require_role(request, "admin", "trader", "analyst", "viewer")
@@ -497,6 +536,7 @@ SITE_HTML = r"""<!doctype html>
 *{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 75% 5%,#203653 0,transparent 38%),var(--bg);color:var(--text);font:15px/1.8 Tahoma,system-ui,sans-serif}a{color:inherit;text-decoration:none}.wrap{width:min(1160px,calc(100% - 36px));margin:auto}.nav{height:78px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #ffffff16}.brand{display:flex;align-items:center;gap:12px;font-weight:900;letter-spacing:.5px}.logo{width:42px;height:42px;border-radius:14px;background:linear-gradient(135deg,#39d6a2,#4d83e8);display:grid;place-items:center;color:#071522;font-size:22px}.navlinks{display:flex;gap:22px;color:var(--muted);font-size:13px}.actions{display:flex;gap:10px;align-items:center}.btn{display:inline-flex;align-items:center;justify-content:center;border:1px solid #ffffff25;border-radius:12px;padding:10px 17px;font-weight:700}.btn.primary{background:linear-gradient(120deg,#37d6a0,#69a5ff);border:0;color:#071522}.hero{padding:92px 0 72px;display:grid;grid-template-columns:1.05fr .95fr;gap:55px;align-items:center}.tag{display:inline-flex;border:1px solid #37d6a055;background:#37d6a012;color:#70e8be;border-radius:30px;padding:5px 12px;font-size:12px}.hero h1{font-size:clamp(34px,5vw,58px);line-height:1.3;margin:20px 0}.hero p{color:var(--muted);max-width:620px;font-size:17px}.hero-actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:27px}.visual{border:1px solid #ffffff20;border-radius:24px;padding:18px;background:linear-gradient(150deg,#15263b,#111a2b);box-shadow:0 28px 80px #0006}.visual-top{display:flex;justify-content:space-between;color:var(--muted);font-size:12px}.chart{height:230px;width:100%;margin-top:15px}.chart svg{width:100%;height:100%}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:15px}.stat{background:#ffffff08;border:1px solid #ffffff12;border-radius:12px;padding:12px}.stat small{color:var(--muted);display:block}.stat b{font-size:18px}.section{padding:60px 0}.section h2{font-size:30px;margin:0 0 8px}.lead{color:var(--muted);margin:0 0 25px}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:15px}.feature{background:var(--panel);border:1px solid var(--line);border-radius:17px;padding:22px}.feature .ico{font-size:23px;color:var(--green)}.feature h3{margin:8px 0}.feature p{color:var(--muted);font-size:13px;margin:0}.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}.step{padding:20px;border-inline-start:2px solid var(--green);background:#ffffff08;border-radius:12px}.step b{display:block;font-size:17px}.step span{color:var(--muted);font-size:13px}.notice{margin:35px 0;background:#d7a94c12;border:1px solid #d7a94c44;border-radius:14px;padding:17px;color:#e9d5a6;font-size:13px}.footer{border-top:1px solid #ffffff18;padding:25px 0;color:var(--muted);font-size:12px;display:flex;justify-content:space-between;gap:15px;flex-wrap:wrap}
 @media(max-width:800px){.navlinks{display:none}.hero{grid-template-columns:1fr;padding:55px 0 35px;gap:30px}.grid{grid-template-columns:1fr 1fr}.steps{grid-template-columns:1fr}.hero h1{font-size:38px}}@media(max-width:520px){.grid{grid-template-columns:1fr}.nav{height:68px}.nav .btn{padding:8px 11px;font-size:12px}.stats{grid-template-columns:1fr 1fr 1fr}.stat b{font-size:15px}}
 
+.bot-grid{grid-template-columns:repeat(auto-fit,minmax(245px,1fr));margin-top:14px}.bot-card{display:flex;flex-direction:column;gap:12px;min-height:265px}.bot-card h3{margin:0;font-size:17px}.bot-card p{color:var(--muted);font-size:12px;line-height:1.9;margin:0;min-height:64px}.bot-card-head{display:flex;align-items:center;justify-content:space-between}.bot-facts{display:grid;gap:7px;padding:12px;border:1px solid #ffffff12;border-radius:12px;background:#07132255;font-size:11px;color:var(--muted);margin-top:auto}.bot-facts b{color:var(--text)}.bot-card button{margin-top:3px}.bot-restricted{opacity:.72}
 /* Secure control-center visual system refresh */
 :root{--bg:#080f1d;--panel:#101b2d;--panel2:#15243a;--line:#263a54;--text:#eff5ff;--muted:#9aabc2;--green:#36d9a4;--blue:#79a7ff;--red:#ff6f7d;--shadow:0 18px 55px #02081766}
 body{background:radial-gradient(ellipse at 78% -8%,#1d4260 0,transparent 36%),radial-gradient(ellipse at 5% 35%,#17334a55 0,transparent 32%),var(--bg)}
@@ -663,7 +703,7 @@ html[dir=rtl] .nav button:hover{transform:translateX(-3px)}html[dir=ltr] .nav bu
   <button data-page="performance" onclick="goPage(&quot;performance&quot;,this)"><span class="ico">▥</span>عملکرد و نبض بازار</button>
   <button data-page="analysis" onclick="goPage('analysis',this)"><span class="ico">◫</span>تحلیل بازار</button>
   <button data-page="simulator" onclick="goPage('simulator',this)"><span class="ico">◉</span>شبیه‌ساز</button>
-  <button data-page="modules" onclick="goPage('modules',this)"><span class="ico">◇</span>ماژول‌های AI</button>
+  <button data-page="modules" onclick="goPage('modules',this)"><span class="ico">◇</span>مرکز ربات‌ها</button>
   <button data-page="ftmo" onclick="goPage('ftmo',this)"><span class="ico">◎</span>حساب‌های FTMO</button>
   <button id="users-nav" data-page="users" onclick="goPage('users',this)" hidden><span class="ico">♙</span>مدیریت کاربران</button>
  </nav>
@@ -809,7 +849,15 @@ html[dir=rtl] .nav button:hover{transform:translateX(-3px)}html[dir=ltr] .nav bu
 
  <section id="page-analysis" class="page"><div class="card"><div class="section-head"><h3>تحلیل چندتایم‌فریمی</h3><span class="pill">در انتظار داده بازار</span></div><div class="modules"><div class="module"><b>ساختار قیمت</b><small>Market Structure</small></div><div class="module"><b>SMC / ICT</b><small>مفاهیم نقدینگی و نواحی</small></div><div class="module"><b>رژیم بازار</b><small>تشخیص روند و نوسان</small></div></div><div class="notice">تا زمان اتصال فید معتبر قیمت، هیچ تحلیل یا جهت بازار به‌عنوان نتیجه زنده ارائه نمی‌شود.</div></div></section>
  <section id="page-simulator" class="page"><div class="card"><div class="section-head"><h3>شبیه‌ساز تصمیم</h3><span class="pill">آزمایشی</span></div><p class="eyebrow">این ابزار صرفاً منطق محافظتی را در شرایط نمونه نشان می‌دهد.</p><div class="actions"><select class="field" id="symbol"><option>XAUUSD</option><option>EURUSD</option><option>GBPUSD</option><option>USDJPY</option></select><button class="primary" onclick="preview()">اجرای پیش‌نمایش</button></div><div id="preview" class="status">برای شروع، نماد را انتخاب کنید.</div></div></section>
- <section id="page-modules" class="page"><div class="card"><div class="section-head"><h3>ماژول‌های هوش مصنوعی</h3><span class="pill">نمای معماری</span></div><div class="modules"><div class="module"><b>Market Scanner</b><small>اسکن نمادها و شرایط بازار</small></div><div class="module"><b>News Guard</b><small>فیلتر رویدادهای خبری</small></div><div class="module"><b>Adaptive AI</b><small>انتخاب رژیم و استراتژی</small></div><div class="module"><b>Ensemble AI</b><small>ترکیب مدل‌های تحلیلی</small></div><div class="module"><b>Smart Exit</b><small>مدیریت خروج و اهداف</small></div><div class="module"><b>Risk Manager</b><small>کنترل سرمایه و محدودیت‌ها</small></div></div></div></section>
+ <section id="page-modules" class="page">
+  <div class="hero"><div><h2>مرکز فرماندهی ربات‌ها</h2><p>وضعیت واقعی ماژول‌ها، سطح دسترسی و محدودیت‌های اجرایی را یکجا ببین.</p></div><span class="hero-tag">● اجرای سفارش خاموش است</span></div>
+  <div class="grid bot-grid">
+   <article class="card bot-card"><div class="bot-card-head"><span class="metric-icon">⌁</span><span class="pill" id="bot-signals-state">در حال بررسی</span></div><h3>ربات سیگنال‌دهی</h3><p>تحلیل کندل، روند، مومنتوم و نوسان؛ نمایش جهت‌گیری پژوهشی فقط پس از دریافت داده معتبر.</p><div class="bot-facts"><span>موتور تحلیل: <b id="bot-signals-engine">—</b></span><span>فید بازار: <b id="bot-signals-feed">—</b></span></div><button class="primary" onclick="goPage('market-radar',document.querySelector('[data-page=market-radar]'))">بازکردن تحلیل سیگنال</button></article>
+   <article class="card bot-card"><div class="bot-card-head"><span class="metric-icon">◇</span><span class="pill" id="bot-manager-state">در حال بررسی</span></div><h3>ربات مدیریت و کنترل ریسک</h3><p>پیش‌نمایش ریسک پرتفوی، کنترل توقف اضطراری و بررسی محدودیت‌ها؛ بدون ارسال یا مدیریت سفارش.</p><div class="bot-facts"><span>موتور ریسک: <b id="bot-manager-engine">—</b></span><span>توقف اضطراری: <b id="bot-manager-stop">—</b></span></div><button class="primary" onclick="goPage('simulator',document.querySelector('[data-page=simulator]'))">بازکردن کنترل ریسک</button></article>
+   <article class="card bot-card" id="bot-users-card"><div class="bot-card-head"><span class="metric-icon">♙</span><span class="pill" id="bot-users-state">در حال بررسی</span></div><h3>ربات مدیریت کاربران</h3><p>مدیریت حساب‌ها، نقش‌ها و فعال‌سازی کاربران با محدودیت دسترسی مدیر و ثبت وضعیت دسترسی.</p><div class="bot-facts"><span>کاربران ثبت‌شده: <b id="bot-users-count">—</b></span><span>سطح دسترسی: <b id="bot-users-access">—</b></span></div><button class="primary" id="bot-users-open" onclick="goPage('users',document.querySelector('[data-page=users]'))">مدیریت کاربران</button></article>
+  </div>
+  <div class="card" style="margin-top:14px"><div class="section-head"><h3>قواعد ایمنی مشترک</h3><span class="pill ok">فعال</span></div><div class="modules"><div class="module"><b>بدون اجرای سفارش</b><small>execution_allowed همیشه false</small></div><div class="module"><b>داده واقعی الزامی</b><small>داده نمونه به‌عنوان بازار زنده نمایش داده نمی‌شود</small></div><div class="module"><b>دسترسی مبتنی بر نقش</b><small>عملیات کاربران فقط برای مدیر سیستم</small></div></div><div id="bots-status-message" class="status" aria-live="polite">برای دریافت وضعیت، صفحه را تازه‌سازی کن.</div></div>
+ </section>
  <section id="page-ftmo" class="page">
   <div class="card"><div class="section-head"><h3>مدیریت حساب‌های FTMO</h3><span class="pill">ثبت چند حساب</span></div>
    <p class="eyebrow">برای هر حساب، محصول، مرحله و نوع حساب را جداگانه ثبت کن. رمز ورود MT5 یا رمز FTMO را وارد نکن.</p>
@@ -853,13 +901,13 @@ function applyLanguage(locale){activeLocale=["fa","en","ar","tr"].includes(local
  const title=document.getElementById("page-title");if(title&&currentPage)title.textContent=t(pageTitles[currentPage]);const crumb=document.getElementById("crumb");if(crumb&&currentPage)crumb.textContent=t(pageTitles[currentPage]);try{localStorage.setItem("forexai-locale",activeLocale);}catch(e){} }
 function setLanguage(locale){applyLanguage(locale);if(currentUser){document.getElementById("role-label").textContent=t("نقش: ")+t(currentUser.role);refreshStatus();if(currentPage==="news")loadNews();if(currentPage==="performance")loadPerformance();if(currentPage==="users")loadUsers();}}
 let currentPage="overview";\nlet mt5BridgeRefreshTimer=null;
-const pageTitles={performance:"عملکرد و نبض بازار",news:"اخبار بازار",overview:"داشبورد معاملاتی",signals:"سیگنال‌های معاملاتی","market-radar":"رادار بازار",backtest:"آزمایشگاه بک‌تست",sltp:"مدیریت هوشمند SL/TP",mt5:"اتصال زنده MT5",analysis:"تحلیل بازار",simulator:"شبیه‌ساز تصمیم",modules:"ماژول‌های هوش مصنوعی",ftmo:"حساب‌های FTMO",users:"مدیریت کاربران"};
+const pageTitles={performance:"عملکرد و نبض بازار",news:"اخبار بازار",overview:"داشبورد معاملاتی",signals:"سیگنال‌های معاملاتی","market-radar":"رادار بازار",backtest:"آزمایشگاه بک‌تست",sltp:"مدیریت هوشمند SL/TP",mt5:"اتصال زنده MT5",analysis:"تحلیل بازار",simulator:"شبیه‌ساز تصمیم",modules:"مرکز ربات‌ها",ftmo:"حساب‌های FTMO",users:"مدیریت کاربران"};
 let csrfToken='',currentUser=null;
 async function api(path,options={}){const headers=Object.assign({"X-UI-Language":activeLocale},options.headers||{});if(options.method&&options.method!=='GET')headers['X-CSRF-Token']=csrfToken;return fetch(path,Object.assign({credentials:'same-origin'},options,{headers}));}
 async function login(event){if(event)event.preventDefault();const msg=document.getElementById('login-message'),button=document.getElementById('login-submit'),username=document.getElementById('login-user'),password=document.getElementById('login-pass');if(!username.value.trim()||!password.value){msg.textContent='نام کاربری و رمز عبور را وارد کنید.';return;}button.disabled=true;button.querySelector('span').textContent='در حال بررسی اطلاعات...';msg.textContent='در حال اتصال امن به سرور...';try{const r=await fetch('/api/auth/login',{method:'POST',credentials:'same-origin',cache:'no-store',headers:{'Content-Type':'application/json','X-UI-Language':activeLocale},body:JSON.stringify({username:username.value.trim(),password:password.value})});let d={};try{d=await r.json();}catch(parseError){throw Error('پاسخ سرور قابل خواندن نیست. صفحه را تازه‌سازی کنید.');}if(!r.ok)throw Error((d.detail||'ورود ناموفق بود')+(r.status===429?' · چند دقیقه بعد دوباره تلاش کنید.':''));if(!d.csrf_token||!d.user)throw Error('پاسخ ورود ناقص است؛ با پشتیبانی تماس بگیرید.');csrfToken=d.csrf_token;password.value='';msg.textContent='ورود موفق؛ در حال بازکردن پنل...';showApp(d.user);}catch(e){msg.textContent=e instanceof TypeError?'ارتباط با سرور برقرار نشد؛ اتصال اینترنت را بررسی و دوباره تلاش کنید.':e.message;}finally{button.disabled=false;button.querySelector('span').textContent='ورود امن به پنل';}}
 function showApp(user){currentUser=user;document.getElementById('login-screen').hidden=true;document.getElementById('app-shell').hidden=false;document.getElementById('account-label').textContent=user.username;document.getElementById('role-label').textContent=t('نقش: ')+t(user.role);document.getElementById('avatar').textContent=(user.username||'U').slice(0,1).toUpperCase();document.getElementById('users-nav').hidden=user.role!=='admin';refreshStatus();loadFtmoProducts();loadFtmoAccounts();if(user.role==='admin')loadUsers();}
 async function restoreSession(){try{const r=await fetch('/api/auth/me',{credentials:'same-origin'});if(!r.ok)return;const d=await r.json();csrfToken=d.csrf_token;showApp(d.user);}catch(e){}}
-function goPage(name,button){if(name==='users'&&(!currentUser||currentUser.role!=='admin'))return;currentPage=name;if(mt5BridgeRefreshTimer!==null){clearInterval(mt5BridgeRefreshTimer);mt5BridgeRefreshTimer=null;}document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));document.getElementById('page-'+name).classList.add('active');document.querySelectorAll('.nav button').forEach(b=>b.classList.remove('active'));if(button)button.classList.add('active');if(name==='news')loadNews();if(name==='mt5'){loadMT5Bridge();mt5BridgeRefreshTimer=window.setInterval(()=>{if(currentPage==='mt5')loadMT5Bridge();},15000);}if(name==='performance')loadPerformance();if(name==='ftmo'){loadFtmoProducts();loadFtmoAccounts();}document.getElementById('page-title').textContent=t(pageTitles[name]);document.getElementById('crumb').textContent=t(pageTitles[name]);}
+function goPage(name,button){if(name==='users'&&(!currentUser||currentUser.role!=='admin'))return;currentPage=name;if(mt5BridgeRefreshTimer!==null){clearInterval(mt5BridgeRefreshTimer);mt5BridgeRefreshTimer=null;}document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));document.getElementById('page-'+name).classList.add('active');document.querySelectorAll('.nav button').forEach(b=>b.classList.remove('active'));if(button)button.classList.add('active');if(name==='news')loadNews();if(name==='modules')loadBotStatus();if(name==='mt5'){loadMT5Bridge();mt5BridgeRefreshTimer=window.setInterval(()=>{if(currentPage==='mt5')loadMT5Bridge();},15000);}if(name==='performance')loadPerformance();if(name==='ftmo'){loadFtmoProducts();loadFtmoAccounts();}document.getElementById('page-title').textContent=t(pageTitles[name]);document.getElementById('crumb').textContent=t(pageTitles[name]);}
 async function runSLTP(){
  const msg=document.getElementById('sltp-message'),button=document.getElementById('sltp-run'),out=document.getElementById('sltp-result');
  out.hidden=true;button.disabled=true;msg.textContent='در حال اعتبارسنجی مشخصات بروکر و محاسبه...';
@@ -955,6 +1003,26 @@ async function loadFtmoProducts(){try{const r=await fetch('/api/ftmo/products',{
 function refreshFtmoOptions(){const spec=ftmoProducts[document.getElementById('ftmo-product').value]||{phases:[],account_types:[]};const p=document.getElementById('ftmo-phase'),t=document.getElementById('ftmo-type');p.replaceChildren();t.replaceChildren();const p0=document.createElement('option');p0.value='';p0.textContent='انتخاب مرحله';p.appendChild(p0);spec.phases.forEach(v=>{const o=document.createElement('option');o.value=v;o.textContent=ftmoPhaseLabels[v]||v;p.appendChild(o);});const t0=document.createElement('option');t0.value='';t0.textContent='نوع حساب معاملاتی';t.appendChild(t0);spec.account_types.forEach(v=>{const o=document.createElement('option');o.value=v;o.textContent=ftmoTypeLabels[v]||v;t.appendChild(o);});}
 async function saveFtmoAccount(e){e.preventDefault();const msg=document.getElementById('ftmo-message');const payload={label:document.getElementById('ftmo-label').value,account_number:document.getElementById('ftmo-number').value||null,product:document.getElementById('ftmo-product').value,phase:document.getElementById('ftmo-phase').value,account_type:document.getElementById('ftmo-type').value,platform:document.getElementById('ftmo-platform').value,initial_capital:Number(document.getElementById('ftmo-capital').value),currency:document.getElementById('ftmo-currency').value};try{const r=await api('/api/ftmo/accounts',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});const d=await r.json();if(!r.ok)throw Error(d.detail||'ثبت حساب ناموفق بود');msg.textContent='حساب با موفقیت ثبت شد.';document.getElementById('ftmo-account-form').reset();refreshFtmoOptions();await loadFtmoAccounts();}catch(e){msg.textContent='خطا: '+e.message;}}
 async function loadFtmoAccounts(){const el=document.getElementById('ftmo-account-list');if(!el)return;try{const r=await fetch('/api/ftmo/accounts',{headers:{'X-UI-Language':activeLocale}});const d=await r.json();if(!r.ok)throw Error(d.detail||'خطا');el.replaceChildren();if(!d.accounts.length){el.textContent='هنوز حسابی ثبت نشده است.';return;}d.accounts.forEach(a=>{const row=document.createElement('div');row.className='user-row';const info=document.createElement('span');info.textContent=a.label+' · '+(ftmoLabels[a.product]||a.product)+' · '+(ftmoPhaseLabels[a.phase]||a.phase)+' · '+(ftmoTypeLabels[a.account_type]||a.account_type)+' · '+Number(a.initial_capital).toLocaleString(activeLocale)+' '+a.currency+(a.account_number?' · #'+a.account_number:'')+' · '+a.platform;const badge=document.createElement('span');badge.className='pill'+(a.active?' ok':'');badge.textContent=a.active?'فعال':'غیرفعال';row.append(info,badge);el.appendChild(row);});}catch(e){el.textContent=e.message;}}
+async function loadBotStatus(){
+ const msg=document.getElementById('bots-status-message');
+ try{
+  const r=await api('/api/bots/status');const d=await r.json();if(!r.ok)throw Error(d.detail||'دریافت وضعیت ربات‌ها ناموفق بود');
+  const bots=Object.fromEntries((d.bots||[]).map(bot=>[bot.id,bot]));
+  const signal=bots.signals||{},manager=bots.manager||{},users=bots.users||{};
+  document.getElementById('bot-signals-state').textContent=signal.market_data_connected?'داده متصل':'فقط پژوهشی';
+  document.getElementById('bot-signals-engine').textContent=signal.engine_available?'آماده':'در دسترس نیست';
+  document.getElementById('bot-signals-feed').textContent=signal.market_data_connected?'متصل':'متصل نیست';
+  document.getElementById('bot-manager-state').textContent=manager.state==='risk_preview_only'?'پیش‌نمایش ریسک':'محدود';
+  document.getElementById('bot-manager-engine').textContent=manager.engine_available?'آماده':'در دسترس نیست';
+  document.getElementById('bot-manager-stop').textContent=manager.emergency_stop?'فعال':'غیرفعال';
+  document.getElementById('bot-users-state').textContent=users.available?'مدیریت مدیر':'دسترسی محدود';
+  document.getElementById('bot-users-count').textContent=users.available?String(users.user_count):'محرمانه';
+  document.getElementById('bot-users-access').textContent=users.available?'مدیر سیستم':'فقط مدیر';
+  document.getElementById('bot-users-open').disabled=!users.available;
+  document.getElementById('bot-users-card').classList.toggle('bot-restricted',!users.available);
+  msg.textContent='وضعیت از سرور دریافت شد · اجرای سفارش برای همه ربات‌ها غیرفعال است.';
+ }catch(e){msg.textContent='خطا در دریافت وضعیت ربات‌ها: '+e.message;}
+}
 async function loadUsers(){const el=document.getElementById('users-list');try{const r=await fetch('/api/users',{headers:{'X-UI-Language':activeLocale}});const d=await r.json();if(!r.ok)throw Error(d.detail||'خطا');el.replaceChildren();d.users.forEach(u=>{const row=document.createElement('div');row.className='user-row';const label=document.createElement('span');label.textContent=u.username+' · '+t(u.role)+' · '+(u.active?t('فعال'):t('غیرفعال'));row.appendChild(label);if(u.role!=='admin'){const b=document.createElement('button');b.className='ghost';b.textContent=u.active?t('غیرفعال‌کردن'):t('فعال‌کردن');b.onclick=()=>setUserActive(u.id,!u.active);row.appendChild(b);}el.appendChild(row);});}catch(e){el.textContent=e.message;}}
 async function createUser(){try{const r=await api('/api/users',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:document.getElementById('new-username').value,password:document.getElementById('new-password').value,role:document.getElementById('new-role').value})});const d=await r.json();if(!r.ok)throw Error(d.detail||'خطا');document.getElementById('new-password').value='';await loadUsers();}catch(e){document.getElementById('users-list').textContent=e.message;}}
 async function setUserActive(id,active){try{const r=await api('/api/users/'+id+'/active?active='+active,{method:'PATCH'});const d=await r.json();if(!r.ok)throw Error(d.detail||'خطا');await loadUsers();}catch(e){document.getElementById('users-list').textContent=e.message;}}
