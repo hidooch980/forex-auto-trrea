@@ -96,3 +96,18 @@ def test_daily_lock_resets_on_next_utc_day_but_drawdown_lock_does_not(tmp_path):
 def test_in_memory_database_is_rejected_as_not_persistent():
     with pytest.raises(ValueError, match="persistent SQLite file"):
         PersistentRiskLedger(":memory:")
+
+
+def test_global_emergency_stop_survives_restart_and_blocks_reservations(tmp_path):
+    db = tmp_path / "risk.sqlite3"
+    ledger = PersistentRiskLedger(db)
+    stopped = ledger.set_emergency_stop(True, "operator requested stop", now=100)
+    assert stopped.emergency_stop
+    assert stopped.locked
+    restarted = PersistentRiskLedger(db)
+    assert restarted.snapshot(now=101).emergency_stop
+    with pytest.raises(RiskLimitError, match="persistent_risk_lock"):
+        restarted.reserve("blocked", "breakout", .01, now=102)
+    cleared = restarted.unlock("emergency_stop", "incident reviewed", now=103)
+    assert not cleared.emergency_stop
+    restarted.reserve("allowed-after-review", "breakout", .01, now=104)
