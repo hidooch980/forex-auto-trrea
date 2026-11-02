@@ -35,3 +35,26 @@ def test_user_deactivation_revokes_sessions(tmp_path, monkeypatch):
 
     assert auth.set_user_active(user["id"], False)
     assert auth.get_session(token) is None
+
+
+
+def test_admin_cannot_deactivate_self_or_last_active_admin(tmp_path, monkeypatch):
+    monkeypatch.setattr(auth, "DB_PATH", tmp_path / "auth.sqlite3")
+    monkeypatch.setenv("ADMIN_USERNAME", "root_admin")
+    monkeypatch.setenv("ADMIN_PASSWORD", "A-very-long-admin-password-2026")
+    auth.init_auth()
+    admin = auth.authenticate("root_admin", "A-very-long-admin-password-2026")
+
+    try:
+        auth.set_user_active(admin["id"], False, actor_user_id=admin["id"])
+        assert False, "an admin must not deactivate their own account"
+    except ValueError as exc:
+        assert "own account" in str(exc)
+
+    try:
+        auth.set_user_active(admin["id"], False, actor_user_id=999)
+        assert False, "the last active admin must not be deactivated"
+    except ValueError as exc:
+        assert "last active administrator" in str(exc)
+
+    assert auth.authenticate("root_admin", "A-very-long-admin-password-2026") is not None
