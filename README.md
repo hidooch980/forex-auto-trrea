@@ -149,3 +149,10 @@ These additions adapt research practices from public quant-finance skill catalog
 
 
 Agent outputs are validated by `modules/agent_contracts`: every specialist result must include a UTC timestamp, source identifiers, valid data-quality state, bounded confidence, stance and rationale. Stale, future-dated, source-free or degraded outputs are rejected before orchestration.
+
+
+## Deterministic risk and behavioral discipline
+
+`modules/risk_behavior_guard` provides a fail-closed pre-trade policy evaluator. It checks daily/weekly loss, peak drawdown, trade count, loss streak, hourly overtrading, required stop-loss, minimum reward/risk, market-data validity, calendar availability and spread acceptance. It also flags objective proxies for revenge trading (risk/volume escalation after a loss), post-loss cooldown and stale-signal/FOMO-style late entries.
+
+The module does not infer a person's actual emotional state and does not place, modify or close orders. Missing last-loss timing blocks approval until a reliable trade-history adapter supplies it. Its current default limits are conservative research defaults (0.25% per trade, 1% daily loss, 2% weekly loss, 5% peak drawdown); account-specific FTMO/broker rules must override them where stricter. The guard is unit-tested in CI but is not yet wired into the live Master Brain or MT5 execution path, and live execution remains disabled.
