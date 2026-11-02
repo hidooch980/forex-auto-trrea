@@ -110,8 +110,12 @@ def _config_valid(config: PhantomConfig) -> bool:
         and config.min_reward_risk > 0
         and config.max_engine_risk_pct > 0
         and config.max_total_open_risk_pct > 0
+        and isinstance(config.max_open_positions_per_engine, int)
+        and not isinstance(config.max_open_positions_per_engine, bool)
         and config.max_open_positions_per_engine >= 1
         and config.max_spread_points > 0
+        and isinstance(config.max_signal_age_seconds, int)
+        and not isinstance(config.max_signal_age_seconds, bool)
         and config.max_signal_age_seconds >= 0
         and config.trailing_atr_multiple > 0
         and 0 <= config.profit_vault_share <= 1
