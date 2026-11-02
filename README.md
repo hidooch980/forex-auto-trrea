@@ -156,3 +156,12 @@ Agent outputs are validated by `modules/agent_contracts`: every specialist resul
 `modules/risk_behavior_guard` provides a fail-closed pre-trade policy evaluator. It checks daily/weekly loss, peak drawdown, trade count, loss streak, hourly overtrading, required stop-loss, minimum reward/risk, market-data validity, calendar availability and spread acceptance. It also flags objective proxies for revenge trading (risk/volume escalation after a loss), post-loss cooldown and stale-signal/FOMO-style late entries.
 
 The module does not infer a person's actual emotional state and does not place, modify or close orders. Missing last-loss timing blocks approval until a reliable trade-history adapter supplies it. Its current default limits are conservative research defaults (0.25% per trade, 1% daily loss, 2% weekly loss, 5% peak drawdown); account-specific FTMO/broker rules must override them where stricter. The guard is unit-tested in CI but is not yet wired into the live Master Brain or MT5 execution path, and live execution remains disabled.
+
+
+## Broker and MT4/MT5 server directory
+
+`modules/broker_directory` provides broker-name autocomplete for a curated discovery list (including common global providers) and a per-user directory of exact MT4/MT5 server names. The control center exposes authenticated broker search plus Demo/Live server suggestions and lets admins/traders save a newly confirmed server so it appears in later searches.
+
+The catalog deliberately does not invent exact Demo/Live server labels: these can differ by broker entity, region, platform and account group, and may change. A broker name appearing in autocomplete does not mean its server endpoints have been verified or that a terminal connection is available. Users should copy the exact server label shown by their broker or MT4/MT5 login screen. The directory stores names only; it never stores account passwords or investor passwords. Saved server suggestions are isolated per user.
+
+The current directory is a starter catalog, not an exhaustive registry of every broker worldwide. MT5 terminal-side broker discovery and automatic synchronization with all brokers are not yet integrated.
