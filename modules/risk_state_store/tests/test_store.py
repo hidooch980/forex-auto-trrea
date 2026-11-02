@@ -20,13 +20,13 @@ def test_reservations_survive_restart_and_release_only_on_terminal_state(tmp_pat
 
 def test_total_and_per_engine_limits_are_atomic(tmp_path):
     ledger = PersistentRiskLedger(tmp_path / "risk.db",
-        RiskLimits(max_total_risk_pct=.05, max_engine_risk_pct=.025,
+        RiskLimits(max_total_risk_pct=.04, max_engine_risk_pct=.025,
                    max_active_per_engine=1))
     ledger.reserve("a", "breakout", .025, now=1)
     with pytest.raises(RiskLimitError, match="engine_position_limit"):
         ledger.reserve("b", "breakout", .01, now=2)
     with pytest.raises(RiskLimitError, match="total_risk_limit"):
-        ledger.reserve("c", "pullback", .03, now=2)
+        ledger.reserve("c", "pullback", .02, now=2)
 
 
 def test_duplicate_ids_and_invalid_transitions_fail(tmp_path):
