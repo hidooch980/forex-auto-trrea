@@ -191,3 +191,25 @@ def test_closed_trade_updates_shadow_cells_and_cognition_routes(tmp_path, monkey
     assert affect["state"] == "extreme"
     assert affect["human_emotion_inference"] is False
     assert affect["trading_effect"] == "HOLD_REVIEW_REQUIRED"
+
+
+def test_trading_behavior_api_flags_revenge_and_fomo_proxies(tmp_path):
+    from modules.erp_api.router import TradingBehaviorPayload
+
+    router, _, _ = _router(tmp_path)
+    result = _endpoint(router, "/api/erp/cognition/trading-behavior", "POST")(
+        TradingBehaviorPayload(
+            daily_loss_pct=0.2, weekly_loss_pct=0.3, peak_drawdown_pct=0.5,
+            trades_today=2, consecutive_losses=1, emergency_stop=False,
+            trades_last_hour=1, minutes_since_last_loss=3,
+            risk_vs_recent_average=1.5, volume_multiplier_after_loss=1.6,
+            signal_age_seconds=180, normal_signal_age_seconds=60,
+            proposed_risk_pct=0.1, reward_risk=2, has_stop_loss=True,
+            market_data_valid=True, calendar_clear=True, spread_acceptable=True,
+        ), SimpleNamespace(headers={})
+    )
+    assert result["approved"] is False
+    assert "possible_revenge_trading" in result["behavior_flags"]
+    assert "possible_fomo_or_late_entry" in result["behavior_flags"]
+    assert result["emotion_diagnosis"] is False
+    assert result["execution_allowed"] is False
