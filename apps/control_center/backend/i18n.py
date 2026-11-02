@@ -163,6 +163,10 @@ CATALOG = {
     "فید خبری": {"en": "News feed", "ar": "موجز الأخبار", "tr": "Haber akışı"},
     "متصل نیست": {"en": "Not connected", "ar": "غير متصل", "tr": "Bağlı değil"},
     "مشاهده منبع": {"en": "View source", "ar": "عرض المصدر", "tr": "Kaynağı görüntüle"},
+    "غیرفعال‌کردن": {"en": "Deactivate", "ar": "تعطيل", "tr": "Devre dışı bırak"},
+    "فعال‌کردن": {"en": "Activate", "ar": "تفعيل", "tr": "Etkinleştir"},
+    "مشاهده منبع": {"en": "View source", "ar": "عرض المصدر", "tr": "Kaynağı görüntüle"},
+    "استراتژی: ": {"en": "Strategy: ", "ar": "الاستراتيجية: ", "tr": "Strateji: "},
 }
 ALIASES = {"fa": {}, "en": {}, "ar": {}, "tr": {}}
 for _source, _translations in CATALOG.items():
