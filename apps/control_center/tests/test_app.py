@@ -110,3 +110,49 @@ def test_app_route_contains_installable_pwa_metadata_and_ftmo_management():
     assert 'id="install-app"' in html
     assert 'id="page-ftmo"' in html
     assert "saveFtmoAccount" in html
+
+
+def test_dashboard_has_broker_server_autocomplete():
+    html = app_module.dashboard()
+    assert 'id="broker-search"' in html
+    assert 'id="broker-suggestions"' in html
+    assert 'id="broker-environment"' in html
+    assert 'id="broker-server-search"' in html
+    assert "searchBrokerNames" in html
+    assert "loadBrokerServers" in html
+
+
+def test_broker_directory_api_search_and_user_server_suggestions(tmp_path, monkeypatch):
+    from modules.broker_directory import directory
+    monkeypatch.setattr(directory, "DB_PATH", tmp_path / "broker-directory.sqlite3")
+    request, _ = make_user("trader")
+    found = app_module.search_brokers(request, q="pepper")
+    assert any(item["name"] == "Pepperstone" for item in found["brokers"])
+
+    request.method = "POST"
+    payload = app_module.BrokerServerPayload(
+        broker_name="Example Broker", platform="mt5",
+        environment="demo", server_name="ExampleBroker-Demo01",
+    )
+    saved = app_module.add_broker_server(payload, request)
+    assert saved["server"]["server_name"] == "ExampleBroker-Demo01"
+
+    request.method = "GET"
+    servers = app_module.broker_servers(request, broker="Example Broker", platform="mt5", environment="demo")
+    assert [item["server_name"] for item in servers["servers"]] == ["ExampleBroker-Demo01"]
+
+
+def test_viewer_cannot_add_broker_server(tmp_path, monkeypatch):
+    from modules.broker_directory import directory
+    monkeypatch.setattr(directory, "DB_PATH", tmp_path / "broker-directory.sqlite3")
+    request, _ = make_user("viewer")
+    request.method = "POST"
+    payload = app_module.BrokerServerPayload(
+        broker_name="Example Broker", platform="mt5",
+        environment="live", server_name="ExampleBroker-Live01",
+    )
+    try:
+        app_module.add_broker_server(payload, request)
+        assert False, "viewer must not be allowed to write broker servers"
+    except app_module.HTTPException as exc:
+        assert exc.status_code == 403
