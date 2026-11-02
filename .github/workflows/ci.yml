@@ -23,6 +23,8 @@ jobs:
         run: PYTHONPATH=. python -m pytest -q
       - name: Market data quality tests
         run: python -m pytest -q modules/market_data_quality/tests
+      - name: Agent contract tests
+        run: python -m pytest -q modules/agent_contracts/tests
       - name: Ensemble guard tests
         working-directory: modules/ensemble_ai
         run: PYTHONPATH=. python -m pytest -q
