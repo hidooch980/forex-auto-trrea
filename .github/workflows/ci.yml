@@ -29,6 +29,9 @@ jobs:
       - name: Analytics tests
         working-directory: modules/analytics
         run: PYTHONPATH=. python -m pytest -q
+      - name: FTMO compliance tests
+        working-directory: modules/ftmo_compliance
+        run: PYTHONPATH=. python -m pytest -q
       - name: News AI tests
         working-directory: modules/news_ai
         run: PYTHONPATH=. python -m pytest -q
