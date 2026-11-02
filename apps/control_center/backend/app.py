@@ -25,6 +25,21 @@ app = FastAPI(title="Forex AI Hybrid Scalper", version="5.2.0")
 cfg = AppConfig()
 auth.init_auth()
 
+@app.middleware("http")
+async def apply_security_headers(request: Request, call_next):
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+    if request.url.path.startswith("/api/"):
+        response.headers["Cache-Control"] = "no-store"
+    if os.getenv("COOKIE_SECURE", "true").lower() == "true":
+        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+    return response
+
+
+
 class LoginPayload(BaseModel):
     username: str = Field(min_length=3, max_length=64)
     password: str = Field(min_length=1, max_length=256)
@@ -113,13 +128,24 @@ def health():
 
 @app.post("/api/auth/login")
 def login(payload: LoginPayload, request: Request, response: Response):
+    peer = request.client.host if request.client else "unknown"
+    login_identity = f"{peer}|{payload.username.strip().casefold()}"
+    blocked, retry_after = auth.login_is_blocked(login_identity)
+    if blocked:
+        raise HTTPException(
+            status_code=429,
+            detail="Too many login attempts. Try again later.",
+            headers={"Retry-After": str(retry_after)},
+        )
     user = auth.authenticate(payload.username, payload.password)
     if not user:
+        auth.record_login_failure(login_identity)
         raise HTTPException(status_code=401, detail=translate("Invalid username or password.", request.headers.get("x-ui-language")))
+    auth.clear_login_failures(login_identity)
     token, csrf, expires = auth.create_session(user["id"])
     response.set_cookie(
         "forex_session", token, httponly=True,
-        secure=os.getenv("COOKIE_SECURE", "false").lower() == "true",
+        secure=os.getenv("COOKIE_SECURE", "true").lower() == "true",
         samesite="strict", max_age=auth.SESSION_TTL_SECONDS,
         path="/",
     )
@@ -134,7 +160,7 @@ def auth_me(request: Request):
 def logout(request: Request, response: Response):
     require_role(request, "admin", "trader", "analyst", "viewer")
     auth.revoke_session(request.cookies.get("forex_session"))
-    response.delete_cookie("forex_session", path="/", httponly=True, samesite="strict")
+    response.delete_cookie("forex_session", path="/", httponly=True, secure=os.getenv("COOKIE_SECURE", "true").lower() == "true", samesite="strict")
     return {"ok": True}
 
 @app.get("/api/users")
