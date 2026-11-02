@@ -615,7 +615,31 @@ main{min-width:0;padding:25px clamp(14px,3vw,38px) 42px;max-width:1600px;width:1
 .modules{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:14px}.module{padding:13px;border:1px solid var(--line);background:var(--panel);border-radius:13px}.module b{display:block;font-size:12px}.module small{color:var(--muted);font-size:10px}
 .actions{display:flex;gap:9px;flex-wrap:wrap;align-items:center}.primary{background:linear-gradient(135deg,#21bd8d,#178b77);border:0;color:#041b19;padding:10px 16px;border-radius:10px;font-weight:800}.danger{background:#a83243;color:#fff;border:0;padding:10px 15px;border-radius:10px;font-weight:800}.field{background:var(--panel2);border:1px solid var(--line);border-radius:10px;color:var(--text);padding:10px 12px;min-width:0}
 .notice{background:#e9b74b12;border:1px solid #e9b74b35;color:var(--gold);padding:12px 14px;border-radius:12px;font-size:11px;margin-top:14px}
-.page{display:none}.page.active{display:block}.login-wrap{max-width:420px;margin:8vh auto}.login-card{padding:26px}.login-card h2{margin:0 0 6px}.login-card p{color:var(--muted);font-size:12px;margin:0 0 20px}.login-card input{width:100%;margin:6px 0}.login-card button{width:100%;margin-top:10px}.status{margin-top:10px;color:var(--muted);font-size:12px;min-height:20px}
+.page{display:none}.page.active{display:block}
+.login-wrap{min-height:100vh;display:grid;place-items:center;padding:34px 22px;background:radial-gradient(ellipse at 18% 50%,#08b9b522,transparent 35%),radial-gradient(ellipse at 80% 20%,#315ce833,transparent 38%),#070d1b}
+.login-layout{width:min(100%,1040px);min-height:590px;display:grid;grid-template-columns:minmax(340px,.92fr) minmax(0,1.08fr);overflow:hidden;border:1px solid #6685b866;border-radius:24px;background:#0b1428;box-shadow:0 28px 90px #0009}
+.login-panel{padding:clamp(24px,4vw,48px);display:flex;flex-direction:column;justify-content:center;background:radial-gradient(ellipse at 20% 18%,#04b9ae35,transparent 42%),linear-gradient(145deg,#101a33,#090f20 72%);min-width:0}
+.login-brand{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:34px}
+.login-secure{font-size:11px;color:#8ee9d4;white-space:nowrap}.login-secure i{display:inline-block;width:7px;height:7px;border-radius:50%;background:#42efbd;margin-inline-end:6px;box-shadow:0 0 12px #42efbd}
+.login-card{padding:0;border:0;background:transparent;box-shadow:none}
+.login-topline{display:flex;justify-content:space-between;align-items:center;gap:10px}.login-topline .field{width:auto;padding:6px 9px;font-size:11px}
+.login-card h2{font-size:clamp(22px,3vw,30px);margin:16px 0 6px;color:#f5f8ff}
+.login-card p{color:#a8b7d1;font-size:12px;margin:0 0 25px}
+.login-label{display:block;color:#dce6f7;font-size:12px;margin:14px 0 5px}
+.login-card input{width:100%;margin:0;background:#f4f7fc;color:#15213a;border:1px solid #c5d1e5;border-radius:9px;padding:12px 13px;min-height:44px}
+.login-card input:focus{outline:2px solid #38cde0;outline-offset:2px}
+.login-card button{width:100%;margin-top:22px;min-height:46px;background:linear-gradient(100deg,#1547ed,#245ff8);color:#fff;border-radius:10px;box-shadow:0 8px 24px #164cf655}
+.login-card button:disabled{opacity:.65;cursor:wait}
+.login-message{color:#bdcbe0;min-height:24px}
+.login-foot{display:flex;flex-wrap:wrap;gap:8px 18px;margin-top:20px;color:#8fa5c5;font-size:10px}
+.login-caption{margin:18px 0 0;color:#91a4c3;text-align:center;font-size:11px}
+.login-art{position:relative;display:grid;place-items:center;overflow:hidden;min-height:100%;background:radial-gradient(ellipse at 52% 48%,#0755d8aa,transparent 35%),radial-gradient(ellipse at 70% 75%,#02b8ba44,transparent 35%),linear-gradient(145deg,#101d3a,#07132b 70%);border-inline-start:1px solid #5575a755}
+.login-art:before,.login-art:after{content:"";position:absolute;inset:10%;border:1px solid #4b91f533;border-radius:50%;transform:rotate(-28deg) scaleY(.62);box-shadow:0 0 0 34px #3684e20a,0 0 0 68px #3684e208,0 0 65px #078cf044}
+.login-art:after{inset:19%;transform:rotate(34deg) scaleY(.55);border-color:#00d8d055}
+.login-art svg{position:relative;z-index:1;width:min(72%,390px);height:auto;filter:drop-shadow(0 0 34px #04baff88)}
+.status{margin-top:10px;color:var(--muted);font-size:12px;min-height:20px}
+@media(max-width:760px){.login-wrap{padding:16px;min-height:100svh}.login-layout{grid-template-columns:1fr;min-height:0;width:min(100%,480px)}.login-art{grid-row:1;min-height:180px;border-inline-start:0;border-bottom:1px solid #5575a755}.login-art svg{width:145px}.login-art:before{inset:2% 16%}.login-art:after{inset:12% 24%}.login-panel{padding:24px}.login-brand{margin-bottom:22px}.login-caption{margin-bottom:2px}}
+@media(prefers-reduced-motion:reduce){.login-art *{animation:none!important}}
 .user-row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid var(--line)}.user-row:last-child{border:0}
 footer{color:var(--muted);font-size:10px;margin-top:18px;line-height:1.9}
 @media(max-width:1050px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}.content-grid{grid-template-columns:1fr}}
@@ -676,17 +700,34 @@ html[dir=rtl] .nav button:hover{transform:translateX(-3px)}html[dir=ltr] .nav bu
 </head>
 <body>
 <section id="login-screen" class="login-wrap">
- <div class="login-brand"><div class="brand"><div class="logo">F</div><div><strong>FOREX AI</strong><small>HYBRID SCALPER</small></div></div><span class="login-secure"><i></i> اتصال رمزگذاری‌شده</span></div>
- <form id="login-form" class="card login-card" onsubmit="login(event)" autocomplete="on">
-  <div class="login-topline"><span class="eyebrow">SECURE WORKSPACE</span><select id="login-language" class="field" aria-label="Language" onchange="setLanguage(this.value)"><option value="fa">فارسی</option><option value="en">English</option><option value="ar">العربية</option><option value="tr">Türkçe</option></select></div>
-  <h2>به فضای کاری امن خوش آمدید</h2><p>برای ادامه، مشخصات حساب خود را وارد کنید.</p>
-  <label class="login-label" for="login-user">نام کاربری</label><input class="field" id="login-user" name="username" autocomplete="username" autocapitalize="none" spellcheck="false" required minlength="3" maxlength="64" placeholder="نام کاربری">
-  <label class="login-label" for="login-pass">رمز عبور</label><input class="field" id="login-pass" name="password" type="password" autocomplete="current-password" required maxlength="256" placeholder="رمز عبور">
-  <button class="primary login-submit" id="login-submit" type="submit"><span>ورود امن به پنل</span><span aria-hidden="true">↗</span></button>
-  <div id="login-message" class="status login-message" role="status" aria-live="polite">حساب کاربری خود را وارد کنید.</div>
-  <div class="login-foot"><span>● معاملات واقعی غیرفعال</span><span>محافظت نشست و محدودیت تلاش ورود</span></div>
- </form>
- <p class="login-caption">دسترسی فقط برای کاربران مجاز · هرگز رمز حساب بروکر را اینجا وارد نکنید.</p>
+ <div class="login-layout">
+  <div class="login-panel">
+   <div class="login-brand"><div class="brand"><div class="logo">F</div><div><strong>FOREX AI</strong><small>HYBRID SCALPER</small></div></div><span class="login-secure"><i></i> اتصال رمزگذاری‌شده</span></div>
+   <form id="login-form" class="card login-card" onsubmit="login(event)" autocomplete="on">
+    <div class="login-topline"><span class="eyebrow">SECURE WORKSPACE</span><select id="login-language" class="field" aria-label="Language" onchange="setLanguage(this.value)"><option value="fa">فارسی</option><option value="en">English</option><option value="ar">العربية</option><option value="tr">Türkçe</option></select></div>
+    <h2>ورود کاربران</h2><p>برای دسترسی به فضای کاری امن، مشخصات حساب خود را وارد کنید.</p>
+    <label class="login-label" for="login-user">نام کاربری</label><input class="field" id="login-user" name="username" autocomplete="username" autocapitalize="none" spellcheck="false" required minlength="3" maxlength="64" placeholder="نام کاربری">
+    <label class="login-label" for="login-pass">رمز عبور</label><input class="field" id="login-pass" name="password" type="password" autocomplete="current-password" required maxlength="256" placeholder="رمز عبور">
+    <button class="primary login-submit" id="login-submit" type="submit"><span>ورود امن به پنل</span><span aria-hidden="true">↗</span></button>
+    <div id="login-message" class="status login-message" role="status" aria-live="polite">حساب کاربری خود را وارد کنید.</div>
+    <div class="login-foot"><span>● معاملات واقعی غیرفعال</span><span>محافظت نشست و محدودیت تلاش ورود</span></div>
+   </form>
+   <p class="login-caption">دسترسی فقط برای کاربران مجاز · برای ساخت حساب با مدیر سیستم تماس بگیرید.</p>
+  </div>
+  <div class="login-art" aria-hidden="true">
+   <svg viewBox="0 0 420 460" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <defs><linearGradient id="shield" x1="90" y1="70" x2="320" y2="380" gradientUnits="userSpaceOnUse"><stop stop-color="#00E9FF"/><stop offset=".5" stop-color="#1675FF"/><stop offset="1" stop-color="#704BFF"/></linearGradient><linearGradient id="lock" x1="170" y1="190" x2="250" y2="300" gradientUnits="userSpaceOnUse"><stop stop-color="#DFFFFF"/><stop offset="1" stop-color="#48D8FF"/></linearGradient></defs>
+    <circle cx="210" cy="225" r="150" stroke="#1B8DFF" stroke-opacity=".25"/><circle cx="210" cy="225" r="178" stroke="#00D7D0" stroke-opacity=".18" stroke-dasharray="3 9"/>
+    <path d="M210 55 335 105V210c0 91-54 151-125 190C139 361 85 301 85 210V105L210 55Z" fill="url(#shield)" fill-opacity=".2" stroke="url(#shield)" stroke-width="8"/>
+    <path d="M210 88 305 126V209c0 67-37 114-95 151-58-37-95-84-95-151v-83l95-38Z" fill="#0A8DFF" fill-opacity=".17" stroke="#52E9FF" stroke-opacity=".8" stroke-width="2"/>
+    <rect x="151" y="190" width="118" height="94" rx="18" fill="url(#lock)" fill-opacity=".92"/>
+    <path d="M177 190v-27c0-19 15-34 33-34s33 15 33 34v27" stroke="#79F4FF" stroke-width="13" stroke-linecap="round"/>
+    <circle cx="210" cy="230" r="15" fill="#071A3C"/><path d="M204 241h12l5 23h-22l5-23Z" fill="#071A3C"/>
+    <path d="M35 225h62M323 225h62M210 15v35M210 400v40" stroke="#36D9F6" stroke-opacity=".55" stroke-width="2"/>
+    <circle cx="66" cy="120" r="4" fill="#31E9E0"/><circle cx="350" cy="340" r="4" fill="#31E9E0"/><circle cx="330" cy="95" r="3" fill="#8B9DFF"/>
+   </svg>
+  </div>
+ </div>
 </section>
 <div id="app-shell" class="shell" hidden>
 <aside class="sidebar">
