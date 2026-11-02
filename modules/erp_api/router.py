@@ -125,6 +125,9 @@ def build_erp_router(require_role: Callable, ledger: PersistentRiskLedger) -> AP
             market_as_of = datetime.fromisoformat(raw["market_as_of"].replace("Z", "+00:00"))
             if market_as_of.tzinfo is None or market_as_of.utcoffset() is None:
                 raise PipelineError("invalid_evidence", "Market timestamp must include a timezone")
+            market_age = (now - market_as_of.astimezone(timezone.utc)).total_seconds()
+            if market_age < -30 or market_age > 7200:
+                raise PipelineError("invalid_evidence", "Market snapshot timestamp is future-dated or stale")
             quality = validate_bars(
                 raw["bars"], as_of=now, max_age_seconds=7200,
                 expected_interval_seconds=raw["expected_interval_seconds"],
@@ -144,7 +147,6 @@ def build_erp_router(require_role: Callable, ledger: PersistentRiskLedger) -> AP
                     available=validated.stance != "unavailable",
                 ))
             pipeline.stage(run_id, "FUSE", "evidence_validated", f"{len(signals)} agent outputs and {quality.rows} bars validated")
-            closes = [float(bar["close"]) for bar in raw["bars"]]
             average_range_pct = sum(
                 (float(bar["high"]) - float(bar["low"])) / max(float(bar["close"]), 1e-12) * 100
                 for bar in raw["bars"]
