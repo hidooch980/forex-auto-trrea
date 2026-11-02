@@ -255,6 +255,7 @@ Forecast timestamps later than the trade close are rejected. Duplicate trade IDs
 The ERP exposes:
 - `GET /api/erp/cognition/cells` — per-cell samples, posterior and shadow reliability.
 - `POST /api/erp/cognition/market-affect` — observable market stress classification.
+- `POST /api/erp/cognition/trading-behavior` — objective proxies for revenge trading, post-loss cooldown, overtrading and stale/FOMO-style entry.
 - `POST /api/erp/performance/closed-trade` — also updates matching cell outcome memory.
 
 Market-affect features include realized bar-range proxy, spread ratio, drawdown, loss streak, specialist disagreement and data-quality score. Labels (calm/uncertain/stressed/extreme) describe market/strategy conditions, not a trader's actual mental or emotional state. Extreme stress forces HOLD in the research decision chain. No psychological diagnosis is made.
