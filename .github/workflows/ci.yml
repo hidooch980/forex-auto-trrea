@@ -26,6 +26,9 @@ jobs:
         run: PYTHONPATH=. python -m pytest -q
       - name: Hybrid master brain tests
         run: python -m unittest discover -s modules/master_brain/tests -v
+      - name: Analytics tests
+        working-directory: modules/analytics
+        run: PYTHONPATH=. python -m pytest -q
       - name: News AI tests
         working-directory: modules/news_ai
         run: PYTHONPATH=. python -m pytest -q
