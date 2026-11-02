@@ -35,7 +35,9 @@ class MainActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         buildScreen()
-        registerReceiver(downloadReceiver, IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE))
+        val filter = IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE)
+        if (android.os.Build.VERSION.SDK_INT >= 33) registerReceiver(downloadReceiver, filter, Context.RECEIVER_EXPORTED)
+        else registerReceiver(downloadReceiver, filter)
         val base = prefs.getString("base_url", null)
         if (base.isNullOrBlank()) showServerDialog() else loadServer(base)
         checkForUpdate()
