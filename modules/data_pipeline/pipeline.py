@@ -111,11 +111,13 @@ class PersistentPipeline:
             raise ValueError("unknown pipeline stage")
         with closing(self._connect()) as db:
             db.execute("BEGIN IMMEDIATE")
-            row = db.execute("SELECT status FROM pipeline_runs WHERE run_id=?", (run_id,)).fetchone()
+            row = db.execute("SELECT status,stage FROM pipeline_runs WHERE run_id=?", (run_id,)).fetchone()
             if not row:
                 raise KeyError(run_id)
             if row["status"] != "RUNNING":
                 raise PipelineError("run_not_active", "Pipeline run is not active")
+            if STAGES.index(stage) < STAGES.index(row["stage"]):
+                raise PipelineError("stage_regression", "Pipeline stages cannot move backwards")
             db.execute("UPDATE pipeline_runs SET stage=?,updated_at=? WHERE run_id=?", (stage, timestamp, run_id))
             self._event(db, run_id, stage, "INFO", code, detail, timestamp)
             db.commit()
