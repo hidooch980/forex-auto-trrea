@@ -120,7 +120,16 @@ def publish_decision(decision, *, common_files_dir: str | Path,
             stream.write(line)
             stream.flush()
             os.fsync(stream.fileno())
-        os.replace(temporary, target)
+        # MT5 opens the file briefly on each tick. Retry transient Windows
+        # sharing violations while keeping the previous complete file intact.
+        for attempt in range(10):
+            try:
+                os.replace(temporary, target)
+                break
+            except PermissionError:
+                if attempt == 9:
+                    raise
+                time.sleep(0.05)
     except Exception:
         try:
             os.unlink(temporary)
