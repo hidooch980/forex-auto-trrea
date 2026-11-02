@@ -201,3 +201,21 @@ This is a storage and policy primitive, not yet an account-history reconciler or
 ```bash
 python -m pytest -q modules/risk_state_store/tests
 ```
+
+
+## Unified ERP API integration layer
+
+The control center now mounts a shared authenticated ERP API facade under `/api/erp`. The module catalog reports which subsystems are connected, preview-only, research-only or still unavailable; the overview combines that registry with the persistent risk snapshot.
+
+Core contracts:
+- `GET /api/erp/catalog` — module/API registry and truthful connection states.
+- `GET /api/erp/overview` — unified ERP health and risk overview.
+- `GET /api/erp/risk/snapshot` — persistent risk reservations and circuit-breaker state.
+- `POST /api/erp/risk/equity` — record a trusted equity mark.
+- `POST /api/erp/risk/reservations` — atomically reserve risk before an external order adapter may proceed.
+- `PATCH /api/erp/risk/reservations/{reservation_id}` — reconcile reservation lifecycle (PENDING → OPEN/CLOSED/CANCELLED, OPEN → CLOSED).
+- `POST /api/erp/risk/unlock` — admin-only, reason-audited risk-lock override.
+
+The ERP facade reuses the same SQLite risk ledger for every caller. Set `ERP_RISK_LEDGER_DB` to select its durable database file, or `ERP_DATA_DIR` to select its parent directory. Keep this path on persistent storage and include it in encrypted backups. All state-changing routes use the existing session, role and CSRF controls.
+
+**Important boundary:** this is the first shared API/integration layer, not completion of every external connector. Broker/MT5 execution, live market data, news/calendar providers and reconciled account history remain disconnected. The API deliberately returns `execution_allowed: false`; reserving risk is not an order submission. A trusted broker adapter must reconcile actual tickets, fills, partial fills, cancellations, closes and restart recovery before any execution path can be enabled.
