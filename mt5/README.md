@@ -65,6 +65,27 @@ net result, account balance/equity, magic number and broker comment.
   agent votes, news context and screenshots are not yet included.
 - Keep a backup before editing or clearing the CSV.
 
+## ثبت دلیل خروج و ضرر
+
+در هر ردیف ژورنال، ستون‌های `deal_reason` و `loss_reason` اضافه شده‌اند.
+برای خروج زیان‌ده، دسته‌بندی ماشینی شامل این موارد است:
+
+- `STOP_LOSS_TRIGGERED`: خروج با فعال‌شدن حدضرر
+- `MARGIN_STOP_OUT`: بسته‌شدن اجباری به علت سطح مارجین
+- `MANUAL_CLOSE_AT_LOSS`: بستن دستی از ترمینال، موبایل یا وب با زیان
+- `EA_CLOSED_AT_LOSS`: بسته‌شدن زیان‌ده توسط اکسپرت
+- `LOSS_OTHER_OR_UNATTRIBUTED`: زیان با علت اجرایی نامشخص یا سایر علت‌ها
+
+همچنین زمینه ورود شامل confidence، جهت سیگنال، فاصله حدضرر و اسپرد لحظه ورود
+با شناسه موقعیت نگهداری می‌شود و هنگام ثبت خروج به ژورنال افزوده می‌شود.
+اگر این داده‌ها از قبل در ترمینال موجود نباشند مقدار `-1` یا `NA` ثبت می‌شود.
+
+**محدودیت مهم:** این ستون‌ها علت اجرایی خروج را مشخص می‌کنند، نه علت بنیادی اشتباه بودن تحلیل.
+برای تشخیص مواردی مانند ورود دیرهنگام، خبر ناگهانی، ضعف روند، واگرایی یا خطای عامل AI،
+باید snapshot تحلیل و اخبار در لحظه ورود نیز از پل Python به MT5 ارسال و ذخیره شود.
+در خروج‌های جزئی نیز هر ردیف یک deal جداگانه است؛ برای نتیجه کل موقعیت از `position_id`
+و جمع خالص همه ردیف‌های آن استفاده کنید.
+
 ## Install in MetaTrader 5
 
 1. Open MetaTrader 5 → File → Open Data Folder.
