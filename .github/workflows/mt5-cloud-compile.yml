@@ -1,0 +1,92 @@
+name: MT5 Cloud Compile
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mt5-cloud-compile
+  cancel-in-progress: false
+
+jobs:
+  compile:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Download and verify official MetaTrader 5 installer
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $installer = Join-Path $env:RUNNER_TEMP 'mt5setup.exe'
+          $uri = 'https://download.mql5.com/cdn/web/metaquotes.software.corp/mt5/mt5setup.exe'
+          Invoke-WebRequest -Uri $uri -OutFile $installer
+          $sig = Get-AuthenticodeSignature -FilePath $installer
+          if ($sig.Status -ne 'Valid' -or $sig.SignerCertificate.Subject -notmatch 'MetaQuotes') {
+            throw "Installer signature verification failed. Status=$($sig.Status)"
+          }
+          Write-Host "Official installer signature verified: $($sig.SignerCertificate.Subject)"
+
+      - name: Install MetaTrader 5
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $installer = Join-Path $env:RUNNER_TEMP 'mt5setup.exe'
+          $installDir = 'C:\MT5'
+          $p = Start-Process -FilePath $installer -ArgumentList @('/auto', "/path:$installDir") -PassThru
+          if (-not $p.WaitForExit(300000)) {
+            $p.Kill()
+            throw 'MetaTrader 5 installer timed out after 5 minutes.'
+          }
+          if ($p.ExitCode -ne 0) {
+            throw "MetaTrader 5 installer exited with code $($p.ExitCode)"
+          }
+          $editor = Join-Path $installDir 'metaeditor64.exe'
+          if (-not (Test-Path $editor)) {
+            throw "MetaEditor not found at expected path: $editor"
+          }
+          $sig = Get-AuthenticodeSignature -FilePath $editor
+          if ($sig.Status -ne 'Valid' -or $sig.SignerCertificate.Subject -notmatch 'MetaQuotes') {
+            throw "MetaEditor signature verification failed. Status=$($sig.Status)"
+          }
+          Write-Host "MetaEditor installed and signature verified."
+
+      - name: Compile read-only MT5 bridge
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $editor = 'C:\MT5\metaeditor64.exe'
+          $source = Join-Path $env:GITHUB_WORKSPACE 'mt5\Experts\ForexAutoWebBridge.mq5'
+          $output = Join-Path $env:GITHUB_WORKSPACE 'mt5\Experts\ForexAutoWebBridge.ex5'
+          $log = Join-Path $env:RUNNER_TEMP 'ForexAutoWebBridge-compile.log'
+          if (-not (Test-Path $source)) { throw "Source file not found: $source" }
+          Remove-Item $output,$log -Force -ErrorAction SilentlyContinue
+          $p = Start-Process -FilePath $editor -ArgumentList @("/compile:$source", "/log:$log") -PassThru
+          if (-not $p.WaitForExit(180000)) {
+            $p.Kill()
+            throw 'MetaEditor compile timed out after 3 minutes.'
+          }
+          if (Test-Path $log) { Get-Content $log -Tail 80 | Write-Host }
+          if (-not (Test-Path $output)) { throw 'Compiler did not produce the expected EX5 file.' }
+          if (-not (Test-Path $log)) { throw 'Compiler did not produce a log file.' }
+          $logText = Get-Content $log -Raw
+          if ($logText -notmatch '0 errors, 0 warnings') {
+            throw 'Compile log does not confirm 0 errors and 0 warnings.'
+          }
+          $hash = (Get-FileHash -Algorithm SHA256 $output).Hash
+          "EX5_SHA256=$hash" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
+          Get-Item $output | Format-List FullName,Length,LastWriteTime | Out-String | Write-Host
+
+      - name: Upload compiler output and log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mt5-bridge-compile
+          if-no-files-found: warn
+          path: |
+            mt5/Experts/ForexAutoWebBridge.ex5
+            ${{ runner.temp }}/ForexAutoWebBridge-compile.log
