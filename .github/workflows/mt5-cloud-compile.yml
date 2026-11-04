@@ -1,6 +1,9 @@
 name: MT5 Cloud Compile
 
 on:
+  push:
+    branches:
+      - mt5-cloud-compile
   workflow_dispatch:
 
 permissions:
