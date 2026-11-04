@@ -40,24 +40,28 @@ jobs:
           $ErrorActionPreference = 'Stop'
           $installer = Join-Path $env:RUNNER_TEMP 'mt5setup.exe'
           $installDir = 'C:\MT5'
-          $p = Start-Process -FilePath $installer -ArgumentList @('/auto', "/path:$installDir") -PassThru
-          if (-not $p.WaitForExit(300000)) {
-            $p.Kill()
-            throw 'MetaTrader 5 installer timed out after 5 minutes.'
-          }
-          if ($p.ExitCode -ne 0) {
-            throw "MetaTrader 5 installer exited with code $($p.ExitCode)"
-          }
-          $editor = Join-Path $installDir 'metaeditor64.exe'
-          if (-not (Test-Path $editor)) {
-            throw "MetaEditor not found at expected path: $editor"
+          $p = Start-Process -FilePath $installer -ArgumentList @('/auto', "/path:$installDir") -PassThru -Wait
+          Write-Host "Installer exit code: $($p.ExitCode)"
+          $editorCandidates = @(
+            (Join-Path $installDir 'metaeditor64.exe'),
+            (Join-Path $env:ProgramFiles 'MetaTrader 5\metaeditor64.exe'),
+            (Join-Path $env:ProgramFiles 'MetaTrader 5\MetaEditor64.exe')
+          )
+          $editor = $editorCandidates | Where-Object { Test-Path $_ } | Select-Object -First 1
+          if (-not $editor) {
+            Write-Host 'Install directory diagnostics:'
+            if (Test-Path $installDir) { Get-ChildItem $installDir -Force | Select-Object Name,Length }
+            Write-Host 'Common MetaTrader locations:'
+            Get-ChildItem $env:ProgramFiles -Directory -ErrorAction SilentlyContinue | Where-Object Name -Match 'Meta|Trade'
+            throw "MetaEditor was not found. Installer exit code: $($p.ExitCode)"
           }
           $sig = Get-AuthenticodeSignature -FilePath $editor
           if ($sig.Status -ne 'Valid' -or $sig.SignerCertificate.Subject -notmatch 'MetaQuotes') {
             throw "MetaEditor signature verification failed. Status=$($sig.Status)"
           }
-          Write-Host "MetaEditor installed and signature verified."
-
+          "METAEDITOR_PATH=$editor" | Out-File -FilePath $env:GITHUB_ENV -Append
+          Write-Host "MetaEditor installed and signature verified at: $editor"
+      
       - name: Compile read-only MT5 bridge
         shell: pwsh
         run: |
